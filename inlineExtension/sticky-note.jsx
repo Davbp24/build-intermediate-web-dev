@@ -1,8 +1,9 @@
 export default function StickyNote() {
   return (
     <div className="sticky-note">
-      <h2>Sticky Note</h2>
-      <p>This is a simple sticky note component.</p>
+      <div className="sticky-note-header">Sticky Note</div>
+      <textarea name= "" id="" cols="30" rows="10" placeholder="Write your note here..."></textarea>
+      
     </div>
   )
 }
