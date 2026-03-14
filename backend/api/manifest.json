@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Webpage AI Summarizer",
+  "version": "1.0",
+  "description": "Edit, summarize, and rewrite webpage content using Chrome's Summarizer API.",
+  "permissions": ["activeTab", "scripting"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"]
+    }
+  ]
+}
