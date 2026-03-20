@@ -1,0 +1,112 @@
+/* ===== Sticky Note Styles (injected inside Shadow DOM) ===== */
+
+/* --- Single sticky note card --- */
+.sticky-note {
+  display: flex;
+  flex-direction: column;
+  border-radius: 4px;
+  box-shadow: 2px 4px 12px rgba(0, 0, 0, 0.25);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow: hidden;
+  user-select: none;
+  transition: box-shadow 0.15s ease;
+}
+
+.sticky-note:hover {
+  box-shadow: 3px 6px 18px rgba(0, 0, 0, 0.32);
+}
+
+/* --- Header / drag handle --- */
+.sticky-note-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.08);
+  touch-action: none; /* prevent scroll while dragging */
+}
+
+.sticky-note-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.55);
+  pointer-events: none; /* clicks pass through to header for drag */
+}
+
+.sticky-note-delete {
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: bold;
+  color: rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sticky-note-delete:hover {
+  background: rgba(0, 0, 0, 0.15);
+  color: rgba(0, 0, 0, 0.7);
+}
+
+/* --- Body / text area --- */
+.sticky-note-body {
+  all: unset;
+  display: block;
+  flex: 1;
+  width: 100%;
+  min-height: 80px;
+  padding: 8px;
+  box-sizing: border-box;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #1a1a1a;
+  background: transparent;
+  resize: none;
+  overflow-y: auto;
+  cursor: text;
+  user-select: text;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.sticky-note-body::placeholder {
+  color: rgba(0, 0, 0, 0.3);
+  font-style: italic;
+}
+
+/* --- Floating "Add Note" button --- */
+.add-note-button {
+  all: unset;
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #FFEB3B;
+  color: #333;
+  font-size: 28px;
+  font-weight: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 2px 4px 12px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  z-index: 2147483647;
+}
+
+.add-note-button:hover {
+  transform: scale(1.1);
+  box-shadow: 3px 6px 18px rgba(0, 0, 0, 0.4);
+  background: #FFF176;
+}
+
+.add-note-button:active {
+  transform: scale(0.95);
+}
