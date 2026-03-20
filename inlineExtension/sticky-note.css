@@ -1,0 +1,38 @@
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body{
+    width: 300px;
+    min-height: 360px;
+    background: #f0ece2;
+    font-family: 'DM Sans', sans-serif;
+    overflow: hidden;
+}
+
+.loading{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 360px;
+    color: #888;
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+}
+
+.note{
+    display: flex;
+    flex-direction: column;
+    width: 300px;
+    min-height: 360px;
+    background: var(--note-bg);
+    border: 1.5px solid var(--note-border);
+    border-radius: 3px;
+    box-shadow: 
+        4px 4px 0 var(--note-shadow),
+        0 8px 28px rgba(0, 0, 0, 0.13);
+    position: relative;
+    transition: background 0.22s, border-color 0.22s, box-shadow 0.22s;
+}
