@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 
+
 function Home() {
   const navigate = useNavigate();
 
@@ -9,7 +10,7 @@ function Home() {
         <div className="top-bar">
             <img src="https://via.placeholder.com/150" alt="Logo" className="logo" />
             <h1 className="app-name">Inline</h1>
-            <button className="settings-button">Settings</button>
+            <button onClick={() => navigate('/settings')} className="settings-button">Settings</button>
             <button className='back-button' onClick={() => navigate('/')}>Back</button>
         </div>
       
