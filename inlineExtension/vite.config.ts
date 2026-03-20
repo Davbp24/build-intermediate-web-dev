@@ -3,7 +3,10 @@ import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
 import { copyFileSync, mkdirSync } from 'fs'
 
-export default defineConfig({
+export default defineConfig(
+  {
+
+    
   // Replace process.env.NODE_ENV — browsers don't have `process`
   define: {
     'process.env.NODE_ENV': '"production"',
@@ -42,11 +45,17 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     rollupOptions: {
+      input: {
+        main: "index.html",
+        content: "src/content/content.tsx",
+        background: "src/background/background.tsx",
+      },
       output: {
         // Ensure everything is inlined into a single file
         inlineDynamicImports: true,
         // No separate CSS file — CSS is inlined via ?inline import
         assetFileNames: 'assets/[name]-[hash].[ext]',
+        entryFileNames: "[name].js"
       },
     },
     // Don't extract CSS to a separate file (it's inlined into JS via ?inline)
