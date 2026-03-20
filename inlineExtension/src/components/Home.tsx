@@ -8,11 +8,18 @@ function Home() {
     <div className="home-screen">
     {/* Top Navigation */}
         <div className="top-bar">
-            <img src="https://via.placeholder.com/150" alt="Logo" className="logo" />
+          <div className="top-bar__left">
+            <div className="top-bar__icon">
+            </div>
             <h1 className="app-name">Inline</h1>
-            <button onClick={() => navigate('/settings')} className="settings-button">Settings</button>
-            <button className='back-button' onClick={() => navigate('/')}>Back</button>
-        </div>
+          </div>
+          <div className="top-bar__right">
+            <button className="top-bar__action" aria-label="Settings">
+            </button>
+            <button className="top-bar__action top-bar__action--circle" aria-label="Go back" onClick={() => navigate('/')}>
+            </button>
+          </div>
+      </div>
       
       {/* Main Content */}
     

@@ -48,7 +48,7 @@ export default defineConfig(
       input: {
         main: "index.html",
         content: "src/content/content.tsx",
-        background: "src/background/background.tsx",
+        background: "src/background/background.ts",
       },
       output: {
         // Ensure everything is inlined into a single file
