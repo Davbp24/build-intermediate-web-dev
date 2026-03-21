@@ -93,14 +93,6 @@ export default function StickyNotesManager() {
         />
       ))}
 
-      {/* Floating "Add Note" button */}
-      <button
-        className="add-note-button"
-        onClick={handleAddNote}
-        title="Add a sticky note"
-      >
-        +
-      </button>
     </>
   )
 }
