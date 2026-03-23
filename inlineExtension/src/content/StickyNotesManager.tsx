@@ -28,6 +28,8 @@ export default function StickyNotesManager() {
     })
   }, [])
 
+  
+
   // --- Debounced save whenever notes change (after initial load) ---
   useEffect(() => {
     if (!loaded) return
@@ -80,6 +82,18 @@ export default function StickyNotesManager() {
   const handleDeleteNote = useCallback((id: string) => {
     setNotes((prev) => prev.filter((n) => n.id !== id))
   }, [])
+
+  //addNote signal for content script message listener
+
+  useEffect(() => {
+    const handler = () => handleAddNote()
+
+    document.addEventListener('inline:addNote', handler)
+    return () => {
+      document.removeEventListener('inline:addNote', handler)
+    }
+
+  }, [handleAddNote])
 
   return (
     <>

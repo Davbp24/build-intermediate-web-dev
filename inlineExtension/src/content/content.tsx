@@ -47,3 +47,9 @@ if (!document.getElementById(HOST_ID)) {
   const root = createRoot(mountPoint)
   root.render(<StickyNotesManager />)
 }
+
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.action === 'addNote') {
+    document.dispatchEvent(new CustomEvent('inline:addNote'))
+  }
+})
