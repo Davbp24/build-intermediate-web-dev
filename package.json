@@ -1,6 +1,7 @@
 {
   "devDependencies": {
-    "@types/chrome": "^0.1.38"
+    "@types/chrome": "^0.1.38",
+    "@types/dom-chromium-ai": "^0.0.15"
   },
   "dependencies": {
     "typescript": "^5.9.3"
