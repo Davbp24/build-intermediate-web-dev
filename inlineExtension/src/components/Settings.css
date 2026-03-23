@@ -3,79 +3,13 @@
   display: flex;
   flex-direction: column;
   width: 320px;
-  min-height: 480px;
-  background: #e8e8e8;
-  font-family: -apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  min-height: 400px;
+  background: #edfaff;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   color: #1a1a1a;
 }
 
-/* ─── Top Bar (shared with Home) ──────────────────────────────── */
-.top-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 14px;
-  background: #e8e8e8;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-}
 
-.top-bar__left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.top-bar__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: #1a1a1a;
-  border-radius: 8px;
-  color: white;
-}
-
-.app-name {
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-  margin: 0;
-  color: #1a1a1a;
-}
-
-.top-bar__right {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.top-bar__action {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  background: none;
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  color: #1a1a1a;
-  transition: background 0.15s;
-}
-
-.top-bar__action:hover {
-  background: rgba(0, 0, 0, 0.08);
-}
-
-.top-bar__action--circle {
-  background: #1a1a1a;
-  color: white;
-}
-
-.top-bar__action--circle:hover {
-  background: #333;
-}
 
 /* ─── Settings Content ────────────────────────────────────────── */
 .settings-content {
@@ -143,7 +77,7 @@
   height: 26px;
   border-radius: 13px;
   border: none;
-  background: #a0a0a0;
+  background: #6d6d6d;
   cursor: pointer;
   transition: background 0.2s ease;
   padding: 0;
@@ -151,7 +85,7 @@
 }
 
 .toggle--on {
-  background: #1a1a1a;
+  background: #007ba8;
 }
 
 .toggle-thumb {
@@ -175,9 +109,9 @@
 .language-select {
   appearance: none;
   -webkit-appearance: none;
-  background: #d8d8d8;
-  border: none;
-  border-radius: 20px;
+  background: #ffffff;
+  border: 1px solid #007ba8;
+  border-radius: 12px;
   padding: 7px 16px;
   font-size: 14px;
   color: #555;
@@ -189,7 +123,7 @@
 }
 
 .language-select:hover {
-  background: #ccc;
+  background: #f0f0f0;
 }
 
 /* ─── Footer ──────────────────────────────────────────────────── */
@@ -199,7 +133,6 @@
   justify-content: space-between;
   padding: 14px 18px;
   border-top: 1px solid rgba(0, 0, 0, 0.12);
-  background: #e8e8e8;
 }
 
 .footer__all-settings {

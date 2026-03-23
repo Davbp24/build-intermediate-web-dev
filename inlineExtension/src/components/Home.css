@@ -20,6 +20,7 @@ body{
 .top-bar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 14px 16px;
   border-bottom: 1.5px solid #027ba8;
   background-color: #edfaff;
@@ -40,7 +41,7 @@ body{
 }
 
 .top-bar h1 {
-  font-size: 36px;
+  font-size: 24px;
   font-weight: 700;
   color: #007ba8;
   margin: 0;
@@ -52,7 +53,7 @@ body{
   border: none;
   color: #888;
   cursor: pointer;
-  font-size: 32px;
+  font-size: 24px;
 }
 
 .settings-button:hover, .back-button:hover {

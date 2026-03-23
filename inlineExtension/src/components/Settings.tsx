@@ -1,5 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { DiAptana } from "react-icons/di";
+import { IoIosArrowDroprightCircle } from "react-icons/io";
+import { FaPencil } from "react-icons/fa6";
+
 import './Settings.css';
 
 interface ToggleProps {
@@ -48,20 +52,17 @@ function Settings() {
   return (
     <div className="settings-screen">
 
-      {/* Top Bar — same structure as Home */}
-      <div className="top-bar">
-        <div className="top-bar__left">
-          <div className="top-bar__icon">
-          </div>
-          <h1 className="app-name">Inline</h1>
-        </div>
-        <div className="top-bar__right">
-          <button className="top-bar__action" aria-label="Settings">
-          </button>
-          <button className="top-bar__action top-bar__action--circle" aria-label="Go back" onClick={() => navigate('/')}>
-          </button>
-        </div>
-      </div>
+      {/* Top Navigation */}
+              <div className="top-bar">
+                <div className="logo-container">
+                  <div className="logo" aria-label="Logo"><FaPencil /></div>
+                  <h1 className="app-name">Inline</h1>
+                </div>
+                 <div className="nav-buttons">
+                  <button onClick={() => navigate('/settings')} className="settings-button"><DiAptana /></button>
+                  <button className='back-button' onClick={() => navigate('/')}><IoIosArrowDroprightCircle /></button>
+                 </div>
+              </div>
 
       {/* Settings Content */}
       <div className="settings-content">
