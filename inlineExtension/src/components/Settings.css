@@ -1,0 +1,238 @@
+/* ─── Settings Screen ─────────────────────────────────────────── */
+.settings-screen {
+  display: flex;
+  flex-direction: column;
+  width: 320px;
+  min-height: 480px;
+  background: #e8e8e8;
+  font-family: -apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  color: #1a1a1a;
+}
+
+/* ─── Top Bar (shared with Home) ──────────────────────────────── */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: #e8e8e8;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.top-bar__left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.top-bar__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: #1a1a1a;
+  border-radius: 8px;
+  color: white;
+}
+
+.app-name {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin: 0;
+  color: #1a1a1a;
+}
+
+.top-bar__right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.top-bar__action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #1a1a1a;
+  transition: background 0.15s;
+}
+
+.top-bar__action:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.top-bar__action--circle {
+  background: #1a1a1a;
+  color: white;
+}
+
+.top-bar__action--circle:hover {
+  background: #333;
+}
+
+/* ─── Settings Content ────────────────────────────────────────── */
+.settings-content {
+  flex: 1;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settings-title {
+  font-size: 17px;
+  font-weight: 700;
+  margin: 0 0 4px 0;
+  color: #1a1a1a;
+}
+
+/* ─── Section ─────────────────────────────────────────────────── */
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.settings-section__heading {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0 0 6px 0;
+  letter-spacing: 0.1px;
+}
+
+.settings-group {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── Row ─────────────────────────────────────────────────────── */
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.settings-row--language {
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.settings-label {
+  font-size: 14px;
+  color: #1a1a1a;
+  font-weight: 400;
+}
+
+.settings-label--bold {
+  font-weight: 700;
+}
+
+/* ─── Toggle ──────────────────────────────────────────────────── */
+.toggle {
+  position: relative;
+  width: 44px;
+  height: 26px;
+  border-radius: 13px;
+  border: none;
+  background: #a0a0a0;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.toggle--on {
+  background: #1a1a1a;
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  display: block;
+}
+
+.toggle--on .toggle-thumb {
+  transform: translateX(18px);
+}
+
+/* ─── Language Select ─────────────────────────────────────────── */
+.language-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: #d8d8d8;
+  border: none;
+  border-radius: 20px;
+  padding: 7px 16px;
+  font-size: 14px;
+  color: #555;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  min-width: 120px;
+  text-align: center;
+}
+
+.language-select:hover {
+  background: #ccc;
+}
+
+/* ─── Footer ──────────────────────────────────────────────────── */
+.settings-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+  background: #e8e8e8;
+}
+
+.footer__all-settings {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1a1a;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+}
+
+.footer__all-settings:hover {
+  opacity: 0.7;
+}
+
+.footer__pause {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #1a1a1a;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.footer__pause:hover {
+  background: #333;
+}

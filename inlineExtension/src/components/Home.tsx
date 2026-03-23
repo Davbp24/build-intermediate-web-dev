@@ -1,7 +1,3 @@
-<<<<<<< Updated upstream
-import { useNavigate } from 'react-router-dom';
-
-=======
 import { useNavigate } from "react-router-dom";
 import { DiAptana } from "react-icons/di";
 import { IoIosArrowDroprightCircle } from "react-icons/io";
@@ -27,29 +23,17 @@ function Home() {
            </div>
             
         </div>
->>>>>>> Stashed changes
       
       {/* Main Content */}
     
         <div className="content">
         <h2>Make every page truly yours</h2>
-<<<<<<< Updated upstream
+
         <p>Pick a tool. Customize anything. Drag and drop elements to create your perfect page.</p>
         </div>
+    
+       
       
-      {/* Bottom Navigation */}
-      <div className="bottom-bar">
-        <button onClick={() => navigate('/notes')}>Notes</button>
-        <button onClick={() => navigate('/draw')}>Draw</button>
-        <button onClick={() => navigate('/rewrite')}>Rewrite</button>
-        <button onClick={() => navigate('/ai')}>AI</button>
-        <button onClick={() => navigate('/highlighter')}>Highlighter</button>
-=======
-        <p>
-          Pick a tool. Customize anything. Drag and drop elements to create your
-          perfect page.
-        </p>
-      </div>
     </div>
   );
 }
