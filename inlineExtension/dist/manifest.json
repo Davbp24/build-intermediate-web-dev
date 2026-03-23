@@ -3,7 +3,7 @@
   "name": "Inline",
   "description": "Annotate any webpage with sticky notes.",
   "version": "1.0",
-  "permissions": ["storage", "activeTab"],
+  "permissions": ["storage", "activeTab", "tabs"],
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
