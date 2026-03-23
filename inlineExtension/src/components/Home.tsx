@@ -9,6 +9,9 @@ import { FaPencil } from "react-icons/fa6";
 
 
 import "./Home.css";
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 function Home() {
@@ -18,6 +21,7 @@ function Home() {
     <div className="home-screen">
     {/* Top Navigation */}
         <div className="top-bar">
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
           <div className="top-bar__left">
             <div className="top-bar__icon">
@@ -36,6 +40,12 @@ function Home() {
             <div className="logo" aria-label="Logo"><FaPencil /></div>
             <h1 className="app-name">Inline</h1>
           </div>
+=======
+          <div className="logo-container">
+            <div className="logo" aria-label="Logo"><FaPencil /></div>
+            <h1 className="app-name">Inline</h1>
+          </div>
+>>>>>>> Stashed changes
            <div className="nav-buttons">
             <button onClick={() => navigate('/settings')} className="settings-button"><DiAptana /></button>
             <button className='back-button' onClick={() => navigate('/')}><IoIosArrowDroprightCircle /></button>
@@ -64,6 +74,9 @@ function Home() {
           Pick a tool. Customize anything. Drag and drop elements to create your
           perfect page.
         </p>
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
       </div>
     </div>
