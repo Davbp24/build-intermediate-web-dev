@@ -3,16 +3,6 @@ import { useNavigate } from 'react-router-dom';
 
 =======
 import { useNavigate } from "react-router-dom";
-import { DiAptana } from "react-icons/di";
-import { IoIosArrowDroprightCircle } from "react-icons/io";
-import { FaPencil } from "react-icons/fa6";
-
-
-import "./Home.css";
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
 function Home() {
   const navigate = useNavigate();
@@ -21,36 +11,10 @@ function Home() {
     <div className="home-screen">
     {/* Top Navigation */}
         <div className="top-bar">
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-          <div className="top-bar__left">
-            <div className="top-bar__icon">
-            </div>
+            <img src="https://via.placeholder.com/150" alt="Logo" className="logo" />
             <h1 className="app-name">Inline</h1>
-          </div>
-          <div className="top-bar__right">
-            <button className="top-bar__action" aria-label="Settings">
-            </button>
-            <button className="top-bar__action top-bar__action--circle" aria-label="Go back" onClick={() => navigate('/')}>
-            </button>
-          </div>
-      </div>
-=======
-          <div className="logo-container">
-            <div className="logo" aria-label="Logo"><FaPencil /></div>
-            <h1 className="app-name">Inline</h1>
-          </div>
-=======
-          <div className="logo-container">
-            <div className="logo" aria-label="Logo"><FaPencil /></div>
-            <h1 className="app-name">Inline</h1>
-          </div>
->>>>>>> Stashed changes
-           <div className="nav-buttons">
-            <button onClick={() => navigate('/settings')} className="settings-button"><DiAptana /></button>
-            <button className='back-button' onClick={() => navigate('/')}><IoIosArrowDroprightCircle /></button>
-           </div>
-            
+            <button onClick={() => navigate('/settings')} className="settings-button">Settings</button>
+            <button className='back-button' onClick={() => navigate('/')}>Back</button>
         </div>
 >>>>>>> Stashed changes
       
@@ -74,10 +38,15 @@ function Home() {
           Pick a tool. Customize anything. Drag and drop elements to create your
           perfect page.
         </p>
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
+      </div>
+
+      {/* Bottom Navigation */}
+      <div className="bottom-bar">
+        <button onClick={() => navigate("/notes")}>Notes</button>
+        <button onClick={() => navigate("/draw")}>Draw</button>
+        <button onClick={() => navigate("/rewrite")}>Rewrite</button>
+        <button onClick={() => navigate("/ai")}>AI</button>
+        <button onClick={() => navigate("/highlighter")}>Highlighter</button>
       </div>
     </div>
   );
