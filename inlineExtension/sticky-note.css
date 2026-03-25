@@ -36,3 +36,50 @@ body{
     position: relative;
     transition: background 0.22s, border-color 0.22s, box-shadow 0.22s;
 }
+
+.header{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 10px 8px 12px;
+    background: var(--note-header-bg);
+    border-bottom: 1.5px solid var(--note-border);
+    border-radius: 2px 2px 0 0;
+}
+
+.header-actions{
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.icon-btn{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: none;
+
+}
+
+.body{
+    flex: 1;
+    position: relative;
+    padding: 10px 12px;
+}
+
+.text-area{
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    min-height: 224px;
+    resize: none;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    line-height: 28px;
+    color: black;
+}
