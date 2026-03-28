@@ -4,35 +4,47 @@ import { resolve } from 'path'
 import { copyFileSync, mkdirSync } from 'fs'
 
 export default defineConfig({
-  // Replace process.env.NODE_ENV — browsers don't have `process`
   define: {
     'process.env.NODE_ENV': '"production"',
   },
   plugins: [
     react(),
     {
-      // Copy manifest.json and popup assets into dist/ after build
       name: 'copy-extension-files',
-      closeBundle() {
+      async closeBundle() {
         mkdirSync(resolve(__dirname, 'dist'), { recursive: true })
+
+        /* bundle the background service worker via esbuild */
+        const esbuild = await import('esbuild')
+        await esbuild.build({
+          entryPoints: [resolve(__dirname, 'src/background/background.ts')],
+          bundle: true,
+          outfile: resolve(__dirname, 'dist/background.js'),
+          platform: 'browser',
+          target: 'chrome114',
+          format: 'iife',
+        })
+
         copyFileSync(
           resolve(__dirname, 'public/manifest.json'),
           resolve(__dirname, 'dist/manifest.json'),
         )
-        // Copy popup entry (index.html) and icon
+        copyFileSync(
+          resolve(__dirname, 'public/popup.html'),
+          resolve(__dirname, 'dist/popup.html'),
+        )
         try {
           copyFileSync(
             resolve(__dirname, 'public/vite.svg'),
             resolve(__dirname, 'dist/vite.svg'),
           )
         } catch {
-          // Icon is optional
+          /* icon is optional */
         }
       },
     },
   ],
   build: {
-    // Build the content script as a self-contained IIFE bundle
     lib: {
       entry: resolve(__dirname, 'src/content/content.tsx'),
       name: 'InlineContent',
@@ -43,13 +55,10 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       output: {
-        // Ensure everything is inlined into a single file
         inlineDynamicImports: true,
-        // No separate CSS file — CSS is inlined via ?inline import
         assetFileNames: 'assets/[name]-[hash].[ext]',
       },
     },
-    // Don't extract CSS to a separate file (it's inlined into JS via ?inline)
     cssCodeSplit: false,
   },
 })

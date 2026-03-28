@@ -19,6 +19,7 @@ export interface StickyNoteData {
   height: number
   content: string
   color: string
+  title?: string
   createdAt: number
   updatedAt: number
 }

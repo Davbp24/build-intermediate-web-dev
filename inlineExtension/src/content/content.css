@@ -1,36 +1,78 @@
-/* ===== Sticky Note Styles (injected inside Shadow DOM) ===== */
+/* ===== Inline Extension — Shadow DOM Styles ===== */
 
-/* --- Single sticky note card --- */
+/* ─── Sticky note card ─── */
 .sticky-note {
   display: flex;
   flex-direction: column;
-  border-radius: 4px;
-  box-shadow: 2px 4px 12px rgba(0, 0, 0, 0.25);
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  border-radius: 12px;
   overflow: hidden;
+  border: 1.5px solid rgba(226,232,240,0.7);
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
   user-select: none;
-  transition: box-shadow 0.15s ease;
+  transition: border-color 0.15s, transform 0.1s;
 }
 
 .sticky-note:hover {
-  box-shadow: 3px 6px 18px rgba(0, 0, 0, 0.32);
+  border-color: rgba(148,163,184,0.6);
 }
 
-/* --- Header / drag handle --- */
+/* ─── Header drag bar ─── */
 .sticky-note-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 4px 8px;
-  background: rgba(0, 0, 0, 0.08);
-  touch-action: none; /* prevent scroll while dragging */
+  gap: 5px;
+  padding: 7px 9px 6px;
+  border-bottom: 1px solid rgba(226,232,240,0.5);
+  touch-action: none;
+  flex-shrink: 0;
+}
+
+.sticky-drag-handle {
+  font-size: 11px;
+  color: rgba(100,116,139,0.45);
+  letter-spacing: 1px;
+  pointer-events: none;
+  flex-shrink: 0;
 }
 
 .sticky-note-title {
-  font-size: 11px;
+  flex: 1;
+  font-size: 11.5px;
   font-weight: 600;
-  color: rgba(0, 0, 0, 0.55);
-  pointer-events: none; /* clicks pass through to header for drag */
+  color: #1e293b;
+  pointer-events: auto;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sticky-palette-btn {
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  color: rgba(100,116,139,0.6);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.1s, color 0.1s;
+}
+
+.sticky-palette-btn:hover {
+  background: rgba(0,0,0,0.06);
+  color: rgba(100,116,139,0.9);
+}
+
+.sticky-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  opacity: 0.7;
 }
 
 .sticky-note-delete {
@@ -41,72 +83,130 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  font-size: 12px;
-  font-weight: bold;
-  color: rgba(0, 0, 0, 0.4);
+  font-size: 14px;
+  font-weight: 300;
+  color: rgba(100,116,139,0.5);
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+  transition: background 0.1s, color 0.1s;
 }
 
 .sticky-note-delete:hover {
-  background: rgba(0, 0, 0, 0.15);
-  color: rgba(0, 0, 0, 0.7);
+  background: rgba(239,68,68,0.1);
+  color: #ef4444;
 }
 
-/* --- Body / text area --- */
+/* ─── Body / contenteditable ─── */
 .sticky-note-body {
-  all: unset;
-  display: block;
   flex: 1;
-  width: 100%;
-  min-height: 80px;
-  padding: 8px;
-  box-sizing: border-box;
-  font-size: 13px;
-  line-height: 1.45;
-  color: #1a1a1a;
-  background: transparent;
-  resize: none;
+  padding: 9px 11px;
+  font-size: 12px;
+  line-height: 1.65;
+  color: #334155;
   overflow-y: auto;
   cursor: text;
   user-select: text;
-  white-space: pre-wrap;
-  word-wrap: break-word;
+  outline: none;
+  word-break: break-word;
+  min-height: 60px;
 }
 
-.sticky-note-body::placeholder {
-  color: rgba(0, 0, 0, 0.3);
+.sticky-note-body:empty::before {
+  content: attr(data-placeholder);
+  color: rgba(0,0,0,0.22);
   font-style: italic;
+  pointer-events: none;
 }
 
-/* --- Floating "Add Note" button --- */
-.add-note-button {
+/* ─── Formatting bar ─── */
+.sticky-fmt-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 8px;
+  border-top: 1px solid rgba(226,232,240,0.5);
+  background: rgba(248,250,252,0.7);
+}
+
+/* ─── Resize corner handle ─── */
+.sticky-resize {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 3px 4px 2px;
+  cursor: se-resize;
+  user-select: none;
+  flex-shrink: 0;
+  background: transparent;
+  opacity: 0.4;
+  transition: opacity 0.1s;
+}
+
+.sticky-note:hover .sticky-resize {
+  opacity: 0.7;
+}
+
+/* ─── Launcher: eye + add circles ─── */
+.add-note-launcher {
+  pointer-events: auto;
+}
+
+.launcher-eye {
   all: unset;
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: #FFEB3B;
-  color: #333;
-  font-size: 28px;
-  font-weight: 300;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  color: #475569;
   cursor: pointer;
-  box-shadow: 2px 4px 12px rgba(0, 0, 0, 0.3);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
-  z-index: 2147483647;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  box-sizing: border-box;
 }
 
-.add-note-button:hover {
-  transform: scale(1.1);
-  box-shadow: 3px 6px 18px rgba(0, 0, 0, 0.4);
-  background: #FFF176;
+.launcher-eye:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #334155;
 }
 
-.add-note-button:active {
-  transform: scale(0.95);
+.launcher-eye:active {
+  background: #f1f5f9;
+}
+
+.launcher-add {
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #2563eb;
+  color: #ffffff;
+  cursor: pointer;
+  transition: background 0.15s;
+  border: 1.5px solid transparent;
+  box-sizing: border-box;
+}
+
+.launcher-add:hover {
+  background: #1d4ed8;
+}
+
+.launcher-add:active {
+  background: #1e40af;
+}
+
+/* ─── SmartOverlay pointer events ─── */
+.inline-toolbar,
+.inline-toolbar *,
+.inline-anchor,
+.inline-anchor *,
+.inline-modal-backdrop,
+.inline-modal-backdrop * {
+  pointer-events: auto;
 }
