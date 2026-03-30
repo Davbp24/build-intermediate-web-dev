@@ -19,7 +19,6 @@ interface Crumb { label: string; href?: string }
 interface PageHeaderProps {
   crumbs:     Crumb[]
   title:      string
-  /** When set, replaces the default title heading (e.g. inline rename). */
   titleSlot?: React.ReactNode
   subtitle?:  string
   action?:    React.ReactNode
@@ -44,20 +43,18 @@ export default function PageHeader({ crumbs, title, titleSlot, subtitle, action,
   const workspaceId  = getWorkspaceId(pathname)
 
   return (
-    <div className={cn('border-b border-border bg-background/90 backdrop-blur-sm sticky top-0 z-10', className)}>
-      {/* ── Top bar: breadcrumb + actions ── */}
+    <div className={cn('border-b border-slate-200 bg-white sticky top-0 z-10', className)}>
       <div className="flex items-center justify-between px-6 h-[52px]">
-        {/* Breadcrumb */}
-        <nav className="flex items-center gap-1 text-sm text-muted-foreground">
+        <nav className="flex items-center gap-1 text-sm text-slate-400">
           {crumbs.map((crumb, i) => (
             <span key={i} className="flex items-center gap-1">
-              {i > 0 && <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/40" />}
+              {i > 0 && <ChevronRight className="w-3.5 h-3.5 text-slate-300" />}
               {crumb.href ? (
-                <Link href={crumb.href} className="hover:text-foreground transition-colors cursor-pointer">
+                <Link href={crumb.href} className="hover:text-slate-700 transition-colors cursor-pointer">
                   {crumb.label}
                 </Link>
               ) : (
-                <span className={cn(i === crumbs.length - 1 && 'text-foreground font-medium')}>
+                <span className={cn(i === crumbs.length - 1 && 'text-slate-700 font-medium')}>
                   {crumb.label}
                 </span>
               )}
@@ -65,21 +62,19 @@ export default function PageHeader({ crumbs, title, titleSlot, subtitle, action,
           ))}
         </nav>
 
-        {/* Actions */}
         <div className="flex items-center gap-2">
           {action}
 
-          {/* Functional "..." dropdown */}
           <DropdownMenu>
-            <DropdownMenuTrigger className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer outline-none">
+            <DropdownMenuTrigger className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer outline-none">
               <MoreHorizontal className="w-4 h-4" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="end" className="w-48 bg-white border border-slate-200 rounded-xl">
               <DropdownMenuItem
-                className="flex items-center gap-2 cursor-pointer"
+                className="flex items-center gap-2 cursor-pointer text-slate-600 hover:text-slate-800"
                 onClick={() => router.push(settingsHref)}
               >
-                <Settings2 className="w-3.5 h-3.5 text-muted-foreground" />
+                <Settings2 className="w-3.5 h-3.5 text-slate-400" />
                 <span>Workspace Settings</span>
               </DropdownMenuItem>
               <DropdownMenuItem
@@ -88,12 +83,12 @@ export default function PageHeader({ crumbs, title, titleSlot, subtitle, action,
               >
                 <ExportButton
                   workspaceId={workspaceId}
-                  className="flex items-center gap-2 w-full px-2 py-1.5 text-sm text-foreground rounded-sm hover:bg-accent transition-colors"
+                  className="flex items-center gap-2 w-full px-2 py-1.5 text-sm text-slate-600 rounded-sm hover:bg-slate-50 transition-colors"
                 />
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
-                <UserPlus className="w-3.5 h-3.5 text-muted-foreground" />
+              <DropdownMenuSeparator className="bg-slate-100" />
+              <DropdownMenuItem className="flex items-center gap-2 cursor-pointer text-slate-600 hover:text-slate-800">
+                <UserPlus className="w-3.5 h-3.5 text-slate-400" />
                 <span>Invite Members</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -101,7 +96,6 @@ export default function PageHeader({ crumbs, title, titleSlot, subtitle, action,
         </div>
       </div>
 
-      {/* title slot only (used for inline rename widgets, not plain text titles) */}
       {titleSlot && (
         <div className="px-6 pb-3 pt-0.5 min-w-0">{titleSlot}</div>
       )}

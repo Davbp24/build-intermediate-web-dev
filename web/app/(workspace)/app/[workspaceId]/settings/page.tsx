@@ -54,7 +54,7 @@ const WS_NAV_GROUPS: { label: string; items: { id: Tab; label: string; icon: Rea
 const ROLE_META = {
   Admin:  { icon: Crown,  color: '#6C91C2', bg: 'rgba(108,145,194,.12)' },
   Editor: { icon: Pencil, color: '#5FA8A1', bg: 'rgba(95,168,161,.12)'  },
-  Viewer: { icon: Eye,    color: '#94a3b8', bg: 'rgba(148,163,184,.12)' },
+  Viewer: { icon: Eye,    color: '#9B9A97', bg: 'rgba(155,154,151,.12)' },
 } as const
 type Role = keyof typeof ROLE_META
 

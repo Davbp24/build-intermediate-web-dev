@@ -85,12 +85,12 @@ const IVolume = () => (
     <path d="M6.717 3.55A.5.5 0 0 1 7 4v8a.5.5 0 0 1-.812.39L3.825 10.5H1.5A.5.5 0 0 1 1 10V6a.5.5 0 0 1 .5-.5h2.325l2.363-1.89a.5.5 0 0 1 .529-.06z"/>
   </svg>
 )
-/* ─── Accent color (matches website primary) ─── */
-const ACCENT = '#2564BC'
+/* ─── Accent color (matches website) ─── */
+const ACCENT = '#4f46e5'
 
 /* ─── Separator ─── */
 const Sep = () => (
-  <div style={{ width: 1, height: 20, background: '#e2e8f0', margin: '0 4px', flexShrink: 0 }} />
+  <div style={{ width: 1, height: 18, background: '#e2e8f0', margin: '0 6px', flexShrink: 0 }} />
 )
 
 /* ─── Toolbar button (icon or text variant) ─── */
@@ -255,54 +255,55 @@ export default function SmartOverlay() {
               zIndex: 2147483646,
               background: '#ffffff',
               border: '1.5px solid #e2e8f0',
-              borderRadius: 10,
+              borderRadius: 12,
               pointerEvents: 'auto',
               width: 'max-content',
               fontFamily: '-apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif',
               display: 'flex',
               alignItems: 'center',
-              gap: 2,
-              padding: '6px 12px',
+              gap: 3,
+              padding: '5px 10px',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
             }}
           >
-            {/* Group 1: Anchor */}
-            <TBtn onClick={() => { wrapSelectionWithHighlight('extract'); setToolbar(null) }} title="Pin highlight">
+            {/* Highlight */}
+            <TBtn onClick={() => { wrapSelectionWithHighlight('extract'); setToolbar(null) }} title="Highlight selection">
               <IPin />
             </TBtn>
 
             <Sep />
 
-            {/* Group 2: Rewrite + text actions */}
-            <TBtn active={subPanel === 'rewrite'} onClick={() => toggleSub('rewrite')} title="Rewrite with instruction">
+            {/* AI actions */}
+            <TBtn isText onClick={() => void runAiTask('summarize')} title="Summarize">Summarize</TBtn>
+            <TBtn isText onClick={() => void runAiTask('rewrite')} title="Rephrase">Rephrase</TBtn>
+            <TBtn isText onClick={() => void runAiTask('shorten')} title="Shorten">Shorten</TBtn>
+            <TBtn active={subPanel === 'rewrite'} onClick={() => toggleSub('rewrite')} title="Custom rewrite">
               <IEdit />
             </TBtn>
-            <TBtn isText onClick={() => void runAiTask('summarize')} title="Summarize">sum</TBtn>
-            <TBtn isText onClick={() => void runAiTask('rewrite')} title="Rephrase">rep</TBtn>
-            <TBtn isText onClick={() => void runAiTask('shorten')} title="Shorten">sho</TBtn>
 
             <Sep />
 
-            {/* Group 3: Extract, Risk, Map */}
-            <TBtn onClick={() => { wrapSelectionWithHighlight('extract'); setToolbar(null) }} title="Extract schema">
+            {/* Tools */}
+            <TBtn onClick={() => { wrapSelectionWithHighlight('extract'); setToolbar(null) }} title="Extract data">
               <IGrid />
             </TBtn>
-            <TBtn onClick={() => { setToolbar(null); runPageRisk() }} title="Analyze page risk">
+            <TBtn onClick={() => { setToolbar(null); runPageRisk() }} title="Page risk">
               <IAlert />
             </TBtn>
-            <TBtn onClick={() => { setToolbar(null); setSpatialOpen(true) }} title="Save spatial data">
+            <TBtn onClick={() => { setToolbar(null); setSpatialOpen(true) }} title="Save to map">
               <IMapPin />
             </TBtn>
 
             <Sep />
 
-            {/* Group 4: Tag, Speak, Anchor note */}
-            <TBtn active={subPanel === 'insight'} onClick={() => toggleSub('insight')} title="Add insight tag">
+            {/* Extras */}
+            <TBtn active={subPanel === 'insight'} onClick={() => toggleSub('insight')} title="Tag insight">
               <ITag />
             </TBtn>
             <TBtn onClick={() => { void window.speechSynthesis?.speak(new SpeechSynthesisUtterance(selRef.current.slice(0, 800))) }} title="Read aloud">
               <IVolume />
             </TBtn>
-            <TBtn isText onClick={addAnchor} title="Anchor note">T</TBtn>
+            <TBtn isText onClick={addAnchor} title="Pin a note here">Note</TBtn>
           </div>
 
           {/* Sub-panel: rewrite — floats below the pill */}

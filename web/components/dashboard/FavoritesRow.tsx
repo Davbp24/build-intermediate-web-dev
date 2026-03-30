@@ -14,32 +14,32 @@ type IconCfg = { icon: React.ComponentType<{ className?: string }>; color: strin
 const DOMAIN_ICON: Record<string, IconCfg> = {
   'github.com':                 { icon: Code2,        color: '#6C91C2', bg: '#DCE6F4' },
   'zillow.com':                 { icon: Home,         color: '#5FA8A1', bg: '#E6F4F2' },
-  'stripe.com':                 { icon: CreditCard,   color: '#8b5cf6', bg: '#ede9fe' },
+  'stripe.com':                 { icon: CreditCard,   color: '#9065B0', bg: '#F3E8FF' },
   'linear.app':                 { icon: Layers,       color: '#6C91C2', bg: '#DCE6F4' },
-  'vercel.com':                 { icon: Zap,          color: '#1e293b', bg: '#f1f5f9' },
-  'news.ycombinator.com':       { icon: Newspaper,    color: '#f59e0b', bg: '#fef3c7' },
+  'vercel.com':                 { icon: Zap,          color: '#191919', bg: '#F1F1EF' },
+  'news.ycombinator.com':       { icon: Newspaper,    color: '#CB912F', bg: '#FDECC8' },
 }
 
 const TYPE_ICON: Record<string, IconCfg> = {
   'text':       { icon: FileText,     color: '#6C91C2', bg: '#DCE6F4' },
-  'canvas':     { icon: PenTool,      color: '#a855f7', bg: '#f3e8ff' },
+  'canvas':     { icon: PenTool,      color: '#9065B0', bg: '#F3E8FF' },
   'ai-summary': { icon: BrainCircuit, color: '#5FA8A1', bg: '#E6F4F2' },
 }
 
 function getIconCfg(note: Note): IconCfg {
   return DOMAIN_ICON[note.domain]
     ?? TYPE_ICON[note.type]
-    ?? { icon: Globe, color: '#64748b', bg: '#f1f5f9' }
+    ?? { icon: Globe, color: '#787774', bg: '#F1F1EF' }
 }
 
 // ── Mock user data seeded from note id ────────────────────────────────────────
 const MOCK_USERS = [
-  { name: 'Wonpil',  avatar: 'W', color: '#f97316' },
-  { name: 'Young K', avatar: 'Y', color: '#8b5cf6' },
-  { name: 'Dowoon',  avatar: 'D', color: '#0ea5e9' },
-  { name: 'Park S',  avatar: 'P', color: '#22c55e' },
-  { name: 'Jae W',   avatar: 'J', color: '#ec4899' },
-  { name: 'Brian L', avatar: 'B', color: '#f59e0b' },
+  { name: 'Wonpil',  avatar: 'W', color: '#D9730D' },
+  { name: 'Young K', avatar: 'Y', color: '#9065B0' },
+  { name: 'Dowoon',  avatar: 'D', color: '#4B83C4' },
+  { name: 'Park S',  avatar: 'P', color: '#0F7B6C' },
+  { name: 'Jae W',   avatar: 'J', color: '#C4554D' },
+  { name: 'Brian L', avatar: 'B', color: '#CB912F' },
 ]
 
 function mockUser(noteId: string) {

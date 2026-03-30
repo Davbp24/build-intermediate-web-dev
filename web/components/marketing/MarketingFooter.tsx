@@ -2,38 +2,36 @@ import Link from 'next/link'
 
 const LINKS = {
   Product: ['Features', 'Pricing', 'Changelog', 'Roadmap'],
-  Developers: ['Docs', 'API Reference', 'Extension SDK', 'GitHub'],
+  Resources: ['Help Center', 'Getting Started', 'API Docs', 'GitHub'],
   Company: ['About', 'Blog', 'Careers', 'Privacy'],
 }
 
 export default function MarketingFooter() {
   return (
-    <footer className="border-t border-border py-16 px-6">
+    <footer className="border-t-2 border-slate-200 bg-white py-16 px-6">
       <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-12">
-          {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-                <span className="block h-4 w-1 rounded-full bg-primary-foreground -rotate-12" />
+              <div className="w-7 h-7 rounded-md bg-[#191919] border-2 border-[#191919] flex items-center justify-center">
+                <span className="block h-4 w-1 rounded-full bg-white -rotate-12" />
               </div>
-              <span className="font-semibold text-sm">Inline</span>
+              <span className="font-bold text-sm text-slate-900">Inline</span>
             </div>
-            <p className="text-xs text-muted-foreground leading-relaxed max-w-xs">
-              A spatial memory layer for the web. Capture intelligence in context, anywhere.
+            <p className="text-xs text-slate-500 leading-relaxed max-w-xs">
+              Your notes, right where you need them. Built for individuals who browse and teams who ship.
             </p>
           </div>
 
-          {/* Link columns */}
           {Object.entries(LINKS).map(([section, items]) => (
             <div key={section}>
-              <p className="text-xs font-semibold text-foreground mb-4">{section}</p>
+              <p className="text-xs font-bold text-slate-900 mb-4 uppercase tracking-wider">{section}</p>
               <ul className="space-y-2.5">
                 {items.map(item => (
                   <li key={item}>
                     <Link
                       href="#"
-                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      className="text-xs text-slate-500 hover:text-slate-900 transition-colors"
                     >
                       {item}
                     </Link>
@@ -44,12 +42,12 @@ export default function MarketingFooter() {
           ))}
         </div>
 
-        <div className="mt-16 pt-8 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
-          <p>© {new Date().getFullYear()} Inline, Inc. All rights reserved.</p>
+        <div className="mt-16 pt-8 border-t-2 border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
+          <p>&copy; {new Date().getFullYear()} Inline, Inc. All rights reserved.</p>
           <div className="flex items-center gap-6">
-            <Link href="#" className="hover:text-foreground transition-colors">Terms</Link>
-            <Link href="#" className="hover:text-foreground transition-colors">Privacy</Link>
-            <Link href="#" className="hover:text-foreground transition-colors">Cookies</Link>
+            <Link href="#" className="hover:text-slate-900 transition-colors">Terms</Link>
+            <Link href="#" className="hover:text-slate-900 transition-colors">Privacy</Link>
+            <Link href="#" className="hover:text-slate-900 transition-colors">Cookies</Link>
           </div>
         </div>
       </div>

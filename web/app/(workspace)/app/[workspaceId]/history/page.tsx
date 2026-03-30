@@ -42,14 +42,14 @@ export default async function WorkspaceHistoryPage({
   const workspaceName = getWorkspaceName(workspaceId)
 
   return (
-    <>
+    <div className="min-h-full bg-white">
       <PageHeader
         crumbs={[
           { label: workspaceName, href: `/app/${workspaceId}/dashboard` },
           { label: 'History' },
         ]}
-        title="History"
-        subtitle="Every annotation you've ever made, in one place."
+        title="Your Captures"
+        subtitle="Everything you've saved from the web, all in one place."
         action={
           <ExportButton
             workspaceId={workspaceId}
@@ -62,6 +62,6 @@ export default async function WorkspaceHistoryPage({
           <HistorySection workspaceId={workspaceId} highlightNoteId={q} />
         </Suspense>
       </div>
-    </>
+    </div>
   )
 }

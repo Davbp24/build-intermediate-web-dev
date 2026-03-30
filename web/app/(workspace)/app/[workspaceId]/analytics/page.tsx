@@ -34,14 +34,14 @@ export default async function AnalyticsPage({
   const workspaceName   = getWorkspaceName(workspaceId)
 
   return (
-    <>
+    <div className="min-h-full bg-white">
       <PageHeader
         crumbs={[
           { label: workspaceName, href: `/app/${workspaceId}/dashboard` },
           { label: 'Analytics' },
         ]}
         title="Analytics"
-        subtitle="Deep insights into your capture habits and AI usage."
+        subtitle="Understand your research habits and AI usage at a glance."
       />
       <div className="p-6 max-w-7xl">
         <Suspense fallback={
@@ -59,6 +59,6 @@ export default async function AnalyticsPage({
           <AnalyticsData workspaceId={workspaceId} />
         </Suspense>
       </div>
-    </>
+    </div>
   )
 }

@@ -46,7 +46,10 @@ export interface MapCoordinate {
   lng: number
   noteId: string
   type: NoteType
-  label: string
+  /** User note text for the popup body. */
+  notePreview: string
+  /** Place / address line (e.g. raw geocoded address). */
+  locationLabel: string
   domain: string
   color: string
 }

@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { FileText, Folder, Star, Clock } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { FileText, Star } from 'lucide-react'
+import { cn, stripHtml } from '@/lib/utils'
 import { loadFolderDocuments, upsertFolderDocument, type FolderDocument } from '@/lib/workspace-library'
 import { loadWorkspaceFolders, findFolder, type WorkspaceFolder } from '@/lib/workspace-folders'
 import {
@@ -11,6 +11,27 @@ import {
   togglePinnedDocument,
   isPinnedDocument,
 } from '@/lib/dashboard-favorites'
+import { collaboratorIndexForId } from '@/lib/dashboard-mock-avatars'
+
+const PASTEL_BGS = ['bg-[#EBF1F7]', 'bg-[#FDECC8]', 'bg-[#F1F1EF]', 'bg-[#DBEDDB]']
+
+const MOCK_USERS = [
+  { avatar: 'A', color: '#9065B0' },
+  { avatar: 'K', color: '#4B83C4' },
+  { avatar: 'M', color: '#D9730D' },
+  { avatar: 'S', color: '#0F7B6C' },
+  { avatar: 'R', color: '#ec4899' },
+]
+
+function getMockAvatars(docId: string) {
+  const base = collaboratorIndexForId(docId, MOCK_USERS.length)
+  const count = 2 + (base % 2)
+  const out: typeof MOCK_USERS = []
+  for (let i = 0; i < count; i++) {
+    out.push(MOCK_USERS[(base + i) % MOCK_USERS.length])
+  }
+  return out
+}
 
 function relativeTime(ts: number) {
   const diff = Date.now() - ts
@@ -25,7 +46,6 @@ function relativeTime(ts: number) {
 
 export default function LibraryDocumentsSection({ workspaceId }: { workspaceId: string }) {
   const [tick, setTick] = useState(0)
-  /** Avoid hydration mismatch: SSR has no localStorage; first client paint must match server. */
   const [hasHydrated, setHasHydrated] = useState(false)
 
   const refresh = useCallback(() => setTick(t => t + 1), [])
@@ -70,7 +90,7 @@ export default function LibraryDocumentsSection({ workspaceId }: { workspaceId: 
   const orderedDocs = useMemo(() => {
     const pinned = docs.filter(d => pinnedIds.has(d.id))
     const rest = docs.filter(d => !pinnedIds.has(d.id))
-    return [...pinned, ...rest].slice(0, 18)
+    return [...pinned, ...rest].slice(0, 12)
   }, [docs, pinnedIds])
 
   function folderLabel(folderId: string) {
@@ -79,21 +99,21 @@ export default function LibraryDocumentsSection({ workspaceId }: { workspaceId: 
 
   if (!docs.length) {
     return (
-      <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-8 text-center">
-        <div className="mx-auto w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
-          <FileText className="w-6 h-6 text-primary" />
+      <div className="rounded-2xl border-2 border-dashed border-slate-200 p-8 text-center">
+        <div className="mx-auto w-12 h-12 rounded-xl bg-[#EBF1F7] flex items-center justify-center mb-3">
+          <FileText className="w-6 h-6 text-[#4B83C4]" />
         </div>
-        <p className="text-sm font-medium text-foreground">No library documents yet</p>
-        <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
-          In the sidebar, open <strong>Workspaces</strong>, pick this workspace, then use the folder icon to add folders and documents. They will show up here automatically.
+        <p className="text-sm font-medium text-slate-700">No documents yet</p>
+        <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+          Create a folder from the sidebar, add a document, and it will appear here automatically.
         </p>
       </div>
     )
   }
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-minimal">
-      {orderedDocs.map(doc => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {orderedDocs.map((doc, i) => (
         <DocLibraryCard
           key={doc.id}
           doc={doc}
@@ -105,6 +125,7 @@ export default function LibraryDocumentsSection({ workspaceId }: { workspaceId: 
             refresh()
           }}
           onRenamed={refresh}
+          index={i}
         />
       ))}
     </div>
@@ -118,6 +139,7 @@ function DocLibraryCard({
   pinned,
   onTogglePin,
   onRenamed,
+  index,
 }: {
   doc: FolderDocument
   workspaceId: string
@@ -125,9 +147,13 @@ function DocLibraryCard({
   pinned: boolean
   onTogglePin: () => void
   onRenamed: () => void
+  index: number
 }) {
   const href = `/app/${workspaceId}/folder/${doc.folderId}/doc/${doc.id}`
   const [title, setTitle] = useState(doc.title)
+  const bg = PASTEL_BGS[index % PASTEL_BGS.length]
+  const avatars = getMockAvatars(doc.id)
+  const preview = stripHtml(doc.content) || 'Empty document'
 
   useEffect(() => {
     setTitle(doc.title)
@@ -141,7 +167,11 @@ function DocLibraryCard({
   }
 
   return (
-    <div className="relative shrink-0 w-[240px] rounded-2xl bg-card border border-border overflow-hidden flex flex-col hover:border-primary/30 transition-colors">
+    <div className={cn(
+      'relative rounded-2xl p-5 flex flex-col justify-between h-40',
+      'border border-transparent hover:border-slate-200 transition-colors',
+      bg,
+    )}>
       <button
         type="button"
         title={pinned ? 'Remove from favorites' : 'Add to favorites'}
@@ -150,18 +180,12 @@ function DocLibraryCard({
           e.stopPropagation()
           onTogglePin()
         }}
-        className="absolute top-2 right-2 z-20 w-8 h-8 rounded-lg bg-background/90 border border-border/80 flex items-center justify-center text-muted-foreground hover:text-amber-500 hover:border-amber-500/40 transition-colors cursor-pointer"
+        className="absolute top-3 right-3 z-20 text-slate-300 hover:text-amber-400 transition-colors cursor-pointer"
       >
         <Star className={cn('w-4 h-4', pinned && 'fill-amber-400 text-amber-400')} />
       </button>
-      <Link href={href} className="block relative z-0 cursor-pointer" aria-label={`Open ${title || 'document'}`}>
-        <div className="flex items-center justify-center h-[100px] bg-primary/8">
-          <div className="w-14 h-14 rounded-xl bg-primary/15 flex items-center justify-center">
-            <FileText className="w-6 h-6 text-primary" />
-          </div>
-        </div>
-      </Link>
-      <div className="px-4 pt-2">
+
+      <div>
         <input
           type="text"
           value={title}
@@ -171,21 +195,29 @@ function DocLibraryCard({
             if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
           }}
           aria-label="Document name"
-          className="text-[13px] font-semibold text-foreground leading-snug w-full bg-transparent border-0 border-b border-transparent hover:border-border/80 focus:border-primary focus:outline-none focus:ring-0 rounded-none px-0 py-0.5 pr-7"
+          className="text-base font-semibold text-slate-900 tracking-tight w-full bg-transparent border-0 focus:outline-none focus:ring-0 rounded-none px-0 py-0 pr-6 line-clamp-1 truncate"
         />
-      </div>
-      <Link href={href} className="px-4 pb-3 pt-1 flex flex-col gap-1.5 flex-1 min-h-0 cursor-pointer text-left">
-        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          <Folder className="w-3 h-3 shrink-0" />
-          <span className="truncate">{folderName}</span>
-        </div>
-        <p className="text-[11px] text-muted-foreground line-clamp-2 min-h-8">
-          {doc.content.trim() || 'Empty document'}
+        <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+          {preview}
         </p>
-        <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-          <Clock className="w-3 h-3" />
-          {relativeTime(doc.updatedAt)}
+      </div>
+
+      <Link href={href} className="flex items-center justify-between mt-4 cursor-pointer">
+        <div className="flex -space-x-2">
+          {avatars.map((user, i) => (
+            <div
+              key={i}
+              className="w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-[8px] font-bold text-white"
+              style={{ backgroundColor: user.color, zIndex: avatars.length - i }}
+            >
+              {user.avatar}
+              {i === 0 && (
+                <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 border border-white" />
+              )}
+            </div>
+          ))}
         </div>
+        <span className="text-[10px] text-slate-400">{folderName} &middot; {relativeTime(doc.updatedAt)}</span>
       </Link>
     </div>
   )

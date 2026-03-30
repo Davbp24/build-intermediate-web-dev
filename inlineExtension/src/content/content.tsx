@@ -8,7 +8,10 @@
 import { createRoot } from 'react-dom/client'
 import StickyNotesManager from './StickyNotesManager'
 import SmartOverlay from './SmartOverlay'
+import { restoreHighlights } from './highlightWrap'
 import cssText from './content.css?inline'
+
+setTimeout(restoreHighlights, 800)
 
 const HOST_ID = 'inline-extension-root'
 if (!document.getElementById(HOST_ID)) {

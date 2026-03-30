@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getSupabaseAndUserFromRequest } from '@/lib/openai-key'
+import { getSupabaseAndUserFromRequest } from '@/lib/ai-key'
 
 async function geocode(address: string): Promise<{ lat: number; lng: number } | null> {
   try {
@@ -37,18 +37,19 @@ export async function POST(request: Request) {
   }
 
   const coords = await geocode(address)
+  if (!coords) {
+    return NextResponse.json({ error: 'Could not geocode that address. Try a more specific location.' }, { status: 422 })
+  }
 
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const sb = supabase as any
   const { data, error } = await sb.from('spatial_entities').insert({
     user_id:      user.id,
-    workspace_id: workspaceId || null,
-    address,
-    insight_note: insight,
-    source_url:   sourceUrl,
-    lat:          coords?.lat ?? null,
-    lng:          coords?.lng ?? null,
-    created_at:   new Date().toISOString(),
+    raw_address:  address,
+    display_name: insight || null,
+    source_url:   sourceUrl || null,
+    lat:          coords.lat,
+    lng:          coords.lng,
   }).select().single()
   /* eslint-enable @typescript-eslint/no-explicit-any */
 

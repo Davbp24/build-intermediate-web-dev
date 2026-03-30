@@ -239,7 +239,7 @@ function AppearanceTab() {
 
   const THEMES = [
     { id: 'light' as const,  name: 'Light',       desc: 'Clean workspace',      cls: 'bg-slate-50 border-slate-200' },
-    { id: 'dark' as const,   name: 'Dark',         desc: 'Easier on the eyes',  cls: 'bg-slate-900 border-slate-700' },
+    { id: 'dark' as const,   name: 'Dark',         desc: 'Easier on the eyes',  cls: 'bg-[#191919] border-slate-700' },
     { id: 'cosmic' as const, name: 'Cosmic blue',  desc: 'Soft blue highlights', cls: 'bg-sky-50 border-sky-200' },
   ]
 

@@ -45,25 +45,49 @@ export default function LeafletMap({ coordinates }: LeafletMapProps) {
 
       L.control.zoom({ position: 'bottomright' }).addTo(map)
 
+      const typeColors: Record<string, string> = {
+        'text': '#6C91C2',
+        'canvas': '#a855f7',
+        'ai-summary': '#10b981',
+      }
+
       coordinates.forEach(coord => {
+        const pinColor = typeColors[coord.type] ?? '#6C91C2'
         const icon = L.divIcon({
           className: '',
           html: `<div style="
-            width:12px;height:12px;border-radius:50%;
-            background:#6C91C2;border:2.5px solid #fff;
-            box-shadow:0 2px 8px rgba(108,145,194,.5),0 0 0 3px rgba(108,145,194,.15);
+            width:14px;height:14px;border-radius:50%;
+            background:${pinColor};border:2.5px solid #fff;
+            box-shadow:0 2px 6px rgba(0,0,0,.18);
+            cursor:pointer;
           "></div>`,
-          iconSize:   [12, 12],
-          iconAnchor: [6, 6],
+          iconSize:   [14, 14],
+          iconAnchor: [7, 7],
         })
 
+        const esc = (s: string) => s
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+        const noteBody = esc(coord.notePreview || '')
+        const placeLine = esc((coord.locationLabel || '').trim() || 'Location')
         const marker = L.marker([coord.lat, coord.lng], { icon }).addTo(map)
         marker.bindPopup(`
-          <div style="font-family:-apple-system,system-ui,sans-serif;font-size:12px;min-width:180px">
-            <div style="font-weight:600;margin-bottom:3px;color:#1e293b">${coord.domain || 'Location'}</div>
-            <div style="color:#64748b;line-height:1.5">${coord.label}</div>
+          <div style="font-family:-apple-system,system-ui,sans-serif;font-size:12px;min-width:200px;max-width:260px">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${pinColor};flex-shrink:0"></span>
+              <span style="font-weight:700;color:#37352F;font-size:13px">${esc(coord.domain || 'Location')}</span>
+            </div>
+            <div style="background:#F7F6F3;border:1px solid #E3E2DE;border-radius:8px;padding:8px 10px;margin-bottom:6px;">
+              <div style="color:#37352F;line-height:1.5;font-size:11.5px">${noteBody}</div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:10px;font-weight:600;color:${pinColor};text-transform:uppercase;letter-spacing:0.5px">${placeLine}</span>
+              <span style="font-size:10px;color:#9B9A97">${coord.lat.toFixed(4)}, ${coord.lng.toFixed(4)}</span>
+            </div>
           </div>
-        `, { className: 'inline-popup', maxWidth: 240 })
+        `, { className: 'inline-popup', maxWidth: 280 })
       })
 
       if (coordinates.length > 0) {
@@ -91,20 +115,20 @@ export default function LeafletMap({ coordinates }: LeafletMapProps) {
     <>
       <style>{`
         .inline-popup .leaflet-popup-content-wrapper {
-          background:#fff; border:1px solid #e2e8f0;
+          background:#fff; border:1px solid #E3E2DE;
           border-radius:10px; box-shadow:0 4px 20px rgba(0,0,0,.12); padding:0;
         }
         .inline-popup .leaflet-popup-content { margin:10px 12px; }
         .inline-popup .leaflet-popup-tip     { background:#fff; }
         .leaflet-control-zoom {
-          border:1px solid #e2e8f0 !important; border-radius:10px !important;
+          border:1px solid #E3E2DE !important; border-radius:10px !important;
           overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.08) !important;
         }
         .leaflet-control-zoom a {
           background:#fff !important; color:#64748b !important;
-          border-bottom:1px solid #e2e8f0 !important; font-size:16px !important;
+          border-bottom:1px solid #E3E2DE !important; font-size:16px !important;
         }
-        .leaflet-control-zoom a:hover { background:#f1f5f9 !important; color:#1e293b !important; }
+        .leaflet-control-zoom a:hover { background:#F1F1EF !important; color:#37352F !important; }
         .leaflet-control-zoom-in  { border-radius:10px 10px 0 0 !important; }
         .leaflet-control-zoom-out { border-radius:0 0 10px 10px !important; border-bottom:none !important; }
         .leaflet-attribution-flag { display:none !important; }

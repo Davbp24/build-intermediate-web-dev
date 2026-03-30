@@ -6,13 +6,20 @@ import StarterKit from '@tiptap/starter-kit'
 import Heading from '@tiptap/extension-heading'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
+import { Table } from '@tiptap/extension-table'
+import { TableRow } from '@tiptap/extension-table-row'
+import { TableCell } from '@tiptap/extension-table-cell'
+import { TableHeader } from '@tiptap/extension-table-header'
+import { Image } from '@tiptap/extension-image'
+import { Underline } from '@tiptap/extension-underline'
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import {
-  Bold, Italic, Heading1, Heading2, Heading3,
+  Bold, Italic, Underline as UnderlineIcon, Heading1, Heading2, Heading3,
   Plus, GripVertical, ChevronRight, Link2,
   ArrowLeft, Search, List, ListOrdered, AlignLeft,
   Quote, Code, Minus, CheckSquare, Type,
+  Table as TableIcon, ImageIcon,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -67,6 +74,12 @@ const INSERT_ITEMS: InsertItem[] = [
   { section: 'Lists',   Icon: ListOrdered,  label: 'Numbered list',  desc: 'Ordered numbered list',      action: e => e.chain().focus().toggleOrderedList().run() },
   { section: 'Lists',   Icon: Minus,        label: 'Dash list',      desc: 'List with dash markers',     action: e => e.chain().focus().toggleBulletList().run() },
   { section: 'Lists',   Icon: CheckSquare,  label: 'Task list',      desc: 'Checkbox to-do list',        action: e => e.chain().focus().toggleTaskList().run() },
+  /* Media */
+  { section: 'Media',   Icon: TableIcon,    label: 'Table',          desc: 'Insert a data table',        action: e => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
+  { section: 'Media',   Icon: ImageIcon,    label: 'Image',          desc: 'Upload or paste an image',   action: e => {
+    const url = prompt('Paste image URL:')
+    if (url) e.chain().focus().setImage({ src: url }).run()
+  }},
   /* Quote */
   { section: 'Quote',   Icon: Quote,        label: 'Quote block',    desc: 'Highlighted blockquote',     action: e => e.chain().focus().toggleBlockquote().run() },
   { section: 'Quote',   Icon: Code,         label: 'Code block',     desc: 'Multi-line code snippet',    action: e => e.chain().focus().toggleCodeBlock().run() },
@@ -123,6 +136,12 @@ export default function FolderDocumentEditor({ content, onChange, className }: P
       Heading.configure({ levels: [1, 2, 3] }),
       TaskList,
       TaskItem.configure({ nested: true }),
+      Table.configure({ resizable: true }),
+      TableRow,
+      TableCell,
+      TableHeader,
+      Image.configure({ inline: false, allowBase64: true }),
+      Underline,
     ],
     content,
     onUpdate({ editor }) {
@@ -186,7 +205,9 @@ export default function FolderDocumentEditor({ content, onChange, className }: P
     if (hovered) {
       const r   = hovered.getBoundingClientRect()
       const pmR = pm.getBoundingClientRect()
-      setHandle({ top: r.top, left: pmR.left - 60, blockEl: hovered })
+      const lineHeight = parseFloat(getComputedStyle(hovered).lineHeight) || 24
+      const verticalCenter = r.top + Math.min(lineHeight / 2, r.height / 2) - 12
+      setHandle({ top: verticalCenter, left: pmR.left - 60, blockEl: hovered })
     } else {
       hoverTimer.current = setTimeout(() => { setHandle(null); hoverTimer.current = null }, 300)
     }
@@ -261,8 +282,9 @@ export default function FolderDocumentEditor({ content, onChange, className }: P
         className="flex items-center gap-0.5 rounded-xl border border-slate-200 bg-white px-1.5 py-1 text-sm"
       >
         {[
-          { label: 'B', active: editor.isActive('bold'),   action: () => editor.chain().focus().toggleBold().run(),   cls: 'font-bold'   },
-          { label: 'I', active: editor.isActive('italic'), action: () => editor.chain().focus().toggleItalic().run(), cls: 'italic' },
+          { label: 'B', active: editor.isActive('bold'),      action: () => editor.chain().focus().toggleBold().run(),      cls: 'font-bold'   },
+          { label: 'I', active: editor.isActive('italic'),    action: () => editor.chain().focus().toggleItalic().run(),    cls: 'italic' },
+          { label: 'U', active: editor.isActive('underline'), action: () => editor.chain().focus().toggleUnderline().run(), cls: 'underline' },
         ].map(b => (
           <button key={b.label} type="button" onMouseDown={e => { e.preventDefault(); b.action() }}
             className={cn('w-7 h-7 flex items-center justify-center rounded-lg text-xs transition-colors cursor-pointer', b.cls,
@@ -302,7 +324,7 @@ export default function FolderDocumentEditor({ content, onChange, className }: P
             exit={{ opacity: 0 }}
             transition={{ duration: 0.08 }}
             className="flex items-center gap-0.5"
-            style={{ position: 'fixed', top: handle.top + 3, left: handle.left, zIndex: 40, pointerEvents: 'auto' }}
+            style={{ position: 'fixed', top: handle.top, left: handle.left, zIndex: 40, pointerEvents: 'auto' }}
             data-editor-menu
           >
             {/* + : insert new block */}

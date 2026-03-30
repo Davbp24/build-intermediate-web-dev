@@ -50,43 +50,49 @@
   --font-sans: var(--font-geist-sans);
   --radius: 0.625rem;
 
-  /* ── Inline Light-Mode Design System ── */
-  --background:                 #F8FAFC;
-  --foreground:                 #1E293B;
+  /* ── Notion-inspired warm palette ──
+     Primary dark:  #150C00 (rich near-black brown)
+     Accent blue:   #4B83C4 (medium-saturation steel blue)
+     Text:          #37352F (Notion warm dark)
+     Muted:         #787774 / #9B9A97
+     Surface:       #F7F6F3  |  Border: #E3E2DE
+  */
+  --background:                 #FFFFFF;
+  --foreground:                 #37352F;
   --card:                       #FFFFFF;
-  --card-foreground:            #1E293B;
+  --card-foreground:            #37352F;
   --popover:                    #FFFFFF;
-  --popover-foreground:         #1E293B;
-  --primary:                    #6C91C2;
-  --primary-hover:              #5A7FB0;
-  --primary-light:              #DCE6F4;
+  --popover-foreground:         #37352F;
+  --primary:                    #191919;
+  --primary-hover:              #150C00;
+  --primary-light:              #F7F6F3;
   --primary-foreground:         #FFFFFF;
-  --secondary:                  #EEF2F7;
-  --secondary-foreground:       #1E293B;
-  --muted:                      #EEF2F7;
-  --muted-foreground:           #64748B;
-  --accent:                     #5FA8A1;
-  --accent-light:               #E6F4F2;
-  --accent-foreground:          #FFFFFF;
-  --highlight:                  #F2D6A2;
-  --destructive:                #EF4444;
+  --secondary:                  #F7F6F3;
+  --secondary-foreground:       #37352F;
+  --muted:                      #F1F1EF;
+  --muted-foreground:           #787774;
+  --accent:                     #F1F1EF;
+  --accent-light:               #F7F6F3;
+  --accent-foreground:          #37352F;
+  --highlight:                  #FDECC8;
+  --destructive:                #EB5757;
   --destructive-foreground:     #FFFFFF;
-  --border:                     #E2E8F0;
-  --input:                      #E2E8F0;
-  --ring:                       #6C91C2;
-  --chart-1:                    #6C91C2;
-  --chart-2:                    #5FA8A1;
-  --chart-3:                    #93C5FD;
-  --chart-4:                    #6EE7B7;
-  --chart-5:                    #F2D6A2;
-  --sidebar:                    #F1F5F9;
-  --sidebar-foreground:         #1E293B;
-  --sidebar-primary:            #6C91C2;
+  --border:                     #E3E2DE;
+  --input:                      #E3E2DE;
+  --ring:                       #4B83C4;
+  --chart-1:                    #4B83C4;
+  --chart-2:                    #0F7B6C;
+  --chart-3:                    #9065B0;
+  --chart-4:                    #D9730D;
+  --chart-5:                    #CB912F;
+  --sidebar:                    #FFFFFF;
+  --sidebar-foreground:         #37352F;
+  --sidebar-primary:            #191919;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent:             #E6F4F2;
-  --sidebar-accent-foreground:  #1E293B;
-  --sidebar-border:             #E2E8F0;
-  --sidebar-ring:               #6C91C2;
+  --sidebar-accent:             #F1F1EF;
+  --sidebar-accent-foreground:  #37352F;
+  --sidebar-border:             #E3E2DE;
+  --sidebar-ring:               #4B83C4;
   --font-size-base:             14px;
 }
 
@@ -113,7 +119,7 @@
 .scrollbar-minimal,
 html {
   scrollbar-width: thin;
-  scrollbar-color: #64748b transparent;
+  scrollbar-color: #787774 transparent;
 }
 .scrollbar-minimal::-webkit-scrollbar,
 html::-webkit-scrollbar {
@@ -126,12 +132,12 @@ html::-webkit-scrollbar-track {
 }
 .scrollbar-minimal::-webkit-scrollbar-thumb,
 html::-webkit-scrollbar-thumb {
-  background-color: rgba(100, 116, 139, 0.72);
+  background-color: rgba(120, 119, 116, 0.6);
   border-radius: 9999px;
 }
 .scrollbar-minimal::-webkit-scrollbar-thumb:hover,
 html::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(71, 85, 105, 0.88);
+  background-color: rgba(55, 53, 47, 0.72);
 }
 .scrollbar-minimal::-webkit-scrollbar-button,
 html::-webkit-scrollbar-button {

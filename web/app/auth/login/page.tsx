@@ -70,7 +70,7 @@ export default function LoginPage() {
               Google
             </Button>
             <Button variant="outline" size="sm" className="gap-2 text-xs" onClick={() => handleOAuth('azure')}>
-              <Chrome className="w-3.5 h-3.5 text-blue-500" />
+              <Chrome className="w-3.5 h-3.5 text-[#4B83C4]" />
               Microsoft
             </Button>
           </div>

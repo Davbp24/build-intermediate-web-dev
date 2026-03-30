@@ -17,16 +17,16 @@ export default function Breadcrumbs({ items, className }: BreadcrumbsProps) {
     <nav aria-label="Breadcrumb" className={cn('flex items-center gap-1 text-xs', className)}>
       {items.map((item, i) => (
         <span key={i} className="flex items-center gap-1">
-          {i > 0 && <ChevronRight className="w-3 h-3 text-muted-foreground/50 shrink-0" />}
+          {i > 0 && <ChevronRight className="w-3 h-3 text-slate-300 shrink-0" />}
           {item.href && i < items.length - 1 ? (
             <Link
               href={item.href}
-              className="text-muted-foreground hover:text-foreground transition-colors"
+              className="text-slate-400 hover:text-slate-700 transition-colors"
             >
               {item.label}
             </Link>
           ) : (
-            <span className={i === items.length - 1 ? 'text-foreground font-medium' : 'text-muted-foreground'}>
+            <span className={i === items.length - 1 ? 'text-slate-700 font-medium' : 'text-slate-400'}>
               {item.label}
             </span>
           )}

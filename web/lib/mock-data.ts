@@ -219,7 +219,8 @@ export const MOCK_MAP_COORDINATES: MapCoordinate[] = MOCK_NOTES
     lng: n.lng,
     noteId: n.id,
     type: n.type,
-    label: n.content.slice(0, 60) + (n.content.length > 60 ? '…' : ''),
+    notePreview: n.content.length > 120 ? `${n.content.slice(0, 120)}…` : n.content,
+    locationLabel: (n.pageTitle.split('|')[0] ?? n.domain).trim().slice(0, 100),
     domain: n.domain,
     color: n.color,
   }))

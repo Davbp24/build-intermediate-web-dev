@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { generateText } from 'ai'
-import { createOpenAI } from '@ai-sdk/openai'
-import { getOpenAIApiKeyForUser, getSupabaseAndUserFromRequest } from '@/lib/openai-key'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { getAIApiKey, getSupabaseAndUserFromRequest } from '@/lib/ai-key'
 
 export async function POST(request: Request) {
   const { user, supabase } = await getSupabaseAndUserFromRequest(request)
@@ -17,14 +17,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const apiKey = await getOpenAIApiKeyForUser(supabase, user.id)
+  const apiKey = await getAIApiKey()
   if (!apiKey) {
-    return NextResponse.json({ error: 'No OpenAI API key configured.' }, { status: 403 })
+    return NextResponse.json({ error: 'No AI API key configured.' }, { status: 403 })
   }
 
-  const openai = createOpenAI({ apiKey })
+  const google = createGoogleGenerativeAI({ apiKey })
   const { text } = await generateText({
-    model: openai('gpt-4o-mini'),
+    model: google('gemini-2.0-flash'),
     prompt: `You are a web page risk analyst. Analyze the following page content for:
 1. Misinformation or bias
 2. Privacy risks or data collection

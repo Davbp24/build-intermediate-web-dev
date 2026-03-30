@@ -38,17 +38,16 @@ export default function MarketingNav() {
   return (
     <header
       className={cn(
-        'fixed top-0 left-0 right-0 z-50 pointer-events-none transition-[padding] duration-300 ease-out',
+        'fixed top-5 left-0 right-0 z-50 pointer-events-none transition-[padding] duration-300 ease-out',
         floating ? 'px-4 sm:px-6 md:px-8' : 'px-0'
       )}
     >
       <nav
         className={cn(
-          'pointer-events-auto relative mx-auto flex w-full max-w-7xl items-center transition-[border-radius,background-color,border-color,padding,backdrop-filter] duration-300 ease-out',
-          // Glass: translucent + blur + light edge (no shadows)
+          'pointer-events-auto relative mx-auto flex w-full max-w-8xl items-center transition-[border-radius,background-color,border-color,padding] duration-300 ease-out',
           floating
-            ? 'rounded-2xl border border-white/60 bg-white/55 px-5 py-3.5 md:px-8 lg:px-10 backdrop-blur-2xl backdrop-saturate-150'
-            : 'border-b border-white/45 bg-[#FCFBF8]/65 px-5 py-4 md:px-8 lg:px-12 backdrop-blur-2xl backdrop-saturate-150'
+            ? 'rounded-2xl border-2 border-dashed border-slate-300 bg-white px-5 py-3 md:px-8 lg:px-4'
+            : 'border-2 border-transparent bg-white px-5 py-4 md:px-8 lg:px-12'
         )}
       >
         <div className="flex min-w-0 flex-1 justify-start pr-4 lg:pr-8">
@@ -71,7 +70,7 @@ export default function MarketingNav() {
           ))}
         </ul>
 
-        <div className="flex min-w-0 flex-1 justify-end gap-4 sm:gap-6 pl-4 lg:pl-8">
+        <div className="flex items-center min-w-0 flex-1 justify-end gap-4 sm:gap-6 pl-4 lg:pl-8">
           <Link
             href="/auth/login"
             className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors hidden sm:inline"

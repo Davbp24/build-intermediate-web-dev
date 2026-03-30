@@ -77,10 +77,11 @@ export async function fetchDashboardStats(workspaceId?: string): Promise<Dashboa
 
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const sb = supabase as any
-  // Scoped query helper
-  const base = () => workspaceId
-    ? sb.from('notes').eq('workspace_id', workspaceId)
-    : sb.from('notes')
+  const base = (sel: string, opts?: Record<string, unknown>) => {
+    let q = sb.from('notes').select(sel, opts)
+    if (workspaceId) q = q.eq('workspace_id', workspaceId)
+    return q
+  }
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
   const [
@@ -90,12 +91,12 @@ export async function fetchDashboardStats(workspaceId?: string): Promise<Dashboa
     { data: domainRowsRaw },
     { count: aiCount },
   ] = await Promise.all([
-    base().select('*', { count: 'exact', head: true }),
-    base().select('*', { count: 'exact', head: true }).gte('created_at', week.toISOString()),
-    base().select('*', { count: 'exact', head: true })
+    base('*', { count: 'exact', head: true }),
+    base('*', { count: 'exact', head: true }).gte('created_at', week.toISOString()),
+    base('*', { count: 'exact', head: true })
       .gte('created_at', prevWeek.toISOString())
       .lt('created_at', week.toISOString()),
-    base().select('domain, created_at'),
+    base('domain, created_at'),
     sb.from('extractions').select('*', { count: 'exact', head: true }).eq('schema_type', 'ai-summary'),
   ])
 
@@ -163,44 +164,55 @@ export async function fetchMapCoordinates(workspaceId?: string): Promise<MapCoor
 
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const sb = supabase as any
-  let q = sb.from('notes').select('id, domain, type, content, lat, lng').not('lat', 'is', null).not('lng', 'is', null)
+  let q = sb.from('notes').select('id, domain, type, content, lat, lng, page_title').not('lat', 'is', null).not('lng', 'is', null)
   if (workspaceId) q = q.eq('workspace_id', workspaceId)
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
   const { data: notesWithGeo } = await q
 
   if (notesWithGeo && notesWithGeo.length > 0) {
-    return (notesWithGeo as { id: string; domain: string; type: string; content: string; lat: number; lng: number }[])
-      .map(n => ({
-        id:     n.id,
-        lat:    n.lat,
-        lng:    n.lng,
-        noteId: n.id,
-        type:   n.type as MapCoordinate['type'],
-        label:  n.content.slice(0, 80),
-        domain: n.domain,
-        color:  n.type === 'canvas' ? '#a855f7' : n.type === 'ai-summary' ? '#5FA8A1' : '#6C91C2',
-      }))
+    return (notesWithGeo as { id: string; domain: string; type: string; content: string; lat: number; lng: number; page_title: string | null }[])
+      .map(n => {
+        const fromTitle = n.page_title?.split('|')[0]?.trim()
+        const locationLabel =
+          fromTitle && fromTitle.length > 2 ? fromTitle.slice(0, 100) : `${n.lat.toFixed(4)}, ${n.lng.toFixed(4)}`
+        const body = n.content
+        return {
+          id:     n.id,
+          lat:    n.lat,
+          lng:    n.lng,
+          noteId: n.id,
+          type:   n.type as MapCoordinate['type'],
+          notePreview: body.length > 120 ? `${body.slice(0, 120)}…` : body,
+          locationLabel,
+          domain: n.domain,
+          color:  n.type === 'canvas' ? '#a855f7' : n.type === 'ai-summary' ? '#5FA8A1' : '#6C91C2',
+        }
+      })
   }
 
   // Fallback to spatial_entities table
   const { data: seRows } = await supabase
     .from('spatial_entities')
-    .select('id, note_id, raw_address, lat, lng')
+    .select('id, note_id, raw_address, display_name, lat, lng')
 
   if (!seRows) return MOCK_MAP_COORDINATES
 
-  return (seRows as { id: string; note_id: string | null; raw_address: string; lat: number; lng: number }[])
-    .map(se => ({
-      id:     se.id,
-      lat:    se.lat,
-      lng:    se.lng,
-      noteId: se.note_id ?? '',
-      type:   'text' as const,
-      label:  se.raw_address,
-      domain: '',
-      color:  '#6C91C2',
-    }))
+  return (seRows as { id: string; note_id: string | null; raw_address: string; display_name: string | null; lat: number; lng: number }[])
+    .map(se => {
+      const raw = (se.display_name || '').trim()
+      return {
+        id:     se.id,
+        lat:    se.lat,
+        lng:    se.lng,
+        noteId: se.note_id ?? '',
+        type:   'text' as const,
+        notePreview: raw.length > 120 ? `${raw.slice(0, 120)}…` : raw,
+        locationLabel: se.raw_address,
+        domain: '',
+        color:  '#6C91C2',
+      }
+    })
 }
 
 // ---------------------------------------------------------------------------

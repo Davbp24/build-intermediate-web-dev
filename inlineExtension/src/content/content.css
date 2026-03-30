@@ -4,24 +4,26 @@
 .sticky-note {
   display: flex;
   flex-direction: column;
-  border-radius: 12px;
+  border-radius: 14px;
   overflow: hidden;
-  border: 1.5px solid rgba(226,232,240,0.7);
+  border: 1.5px solid rgba(226,232,240,0.8);
   font-family: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
   user-select: none;
-  transition: border-color 0.15s, transform 0.1s;
+  transition: border-color 0.15s, transform 0.1s, box-shadow 0.15s;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.06);
 }
 
 .sticky-note:hover {
-  border-color: rgba(148,163,184,0.6);
+  border-color: rgba(148,163,184,0.7);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.06);
 }
 
 /* ─── Header drag bar ─── */
 .sticky-note-header {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 7px 9px 6px;
+  gap: 6px;
+  padding: 8px 10px 7px;
   border-bottom: 1px solid rgba(226,232,240,0.5);
   touch-action: none;
   flex-shrink: 0;
@@ -29,7 +31,7 @@
 
 .sticky-drag-handle {
   font-size: 11px;
-  color: rgba(100,116,139,0.45);
+  color: rgba(100,116,139,0.35);
   letter-spacing: 1px;
   pointer-events: none;
   flex-shrink: 0;
@@ -37,8 +39,8 @@
 
 .sticky-note-title {
   flex: 1;
-  font-size: 11.5px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
   color: #1e293b;
   pointer-events: auto;
   cursor: pointer;
@@ -46,6 +48,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: -0.01em;
 }
 
 .sticky-palette-btn {
@@ -53,10 +56,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 5px;
-  color: rgba(100,116,139,0.6);
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  color: rgba(100,116,139,0.55);
   cursor: pointer;
   flex-shrink: 0;
   transition: background 0.1s, color 0.1s;
@@ -80,12 +83,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   font-size: 14px;
   font-weight: 300;
-  color: rgba(100,116,139,0.5);
+  color: rgba(100,116,139,0.45);
   cursor: pointer;
   flex-shrink: 0;
   transition: background 0.1s, color 0.1s;
@@ -99,9 +102,9 @@
 /* ─── Body / contenteditable ─── */
 .sticky-note-body {
   flex: 1;
-  padding: 9px 11px;
-  font-size: 12px;
-  line-height: 1.65;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  line-height: 1.7;
   color: #334155;
   overflow-y: auto;
   cursor: text;
@@ -113,7 +116,7 @@
 
 .sticky-note-body:empty::before {
   content: attr(data-placeholder);
-  color: rgba(0,0,0,0.22);
+  color: rgba(0,0,0,0.2);
   font-style: italic;
   pointer-events: none;
 }
@@ -138,12 +141,12 @@
   user-select: none;
   flex-shrink: 0;
   background: transparent;
-  opacity: 0.4;
+  opacity: 0.3;
   transition: opacity 0.1s;
 }
 
 .sticky-note:hover .sticky-resize {
-  opacity: 0.7;
+  opacity: 0.6;
 }
 
 /* ─── Launcher: eye + add circles ─── */
@@ -185,7 +188,7 @@
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: #2563eb;
+  background: #6A8EBE;
   color: #ffffff;
   cursor: pointer;
   transition: background 0.15s;
@@ -194,11 +197,11 @@
 }
 
 .launcher-add:hover {
-  background: #1d4ed8;
+  background: #5a7eae;
 }
 
 .launcher-add:active {
-  background: #1e40af;
+  background: #4a6e9e;
 }
 
 /* ─── SmartOverlay pointer events ─── */

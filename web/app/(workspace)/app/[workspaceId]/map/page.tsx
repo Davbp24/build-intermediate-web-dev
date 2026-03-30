@@ -16,17 +16,17 @@ export default async function WorkspaceMapPage({
   const coordinates     = await fetchMapCoordinates(workspaceId)
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    <div className="flex flex-col h-screen overflow-hidden bg-white">
       <PageHeader
         crumbs={[
           { label: workspaceName, href: `/app/${workspaceId}/dashboard` },
-          { label: 'Spatial Map' },
+          { label: 'Map' },
         ]}
-        title="Spatial Map"
-        subtitle="Geographic distribution of your tracked entities."
+        title="Global Map"
+        subtitle="See where your research takes you around the world."
         action={
-          <span className="text-xs text-muted-foreground bg-muted/60 border border-border/60 px-2 py-1 rounded-md">
-            {coordinates.length} points
+          <span className="text-xs text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg font-medium">
+            {coordinates.length} {coordinates.length === 1 ? 'location' : 'locations'}
           </span>
         }
       />

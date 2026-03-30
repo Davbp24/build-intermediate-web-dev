@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getSupabaseAndUserFromRequest } from '@/lib/openai-key'
+import { getSupabaseAndUserFromRequest } from '@/lib/ai-key'
 
 export async function GET(
   request: Request,

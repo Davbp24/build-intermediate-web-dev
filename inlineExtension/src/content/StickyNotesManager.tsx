@@ -20,8 +20,9 @@ const IEye = ({ crossed }: { crossed?: boolean }) => (
 )
 
 const IPlus = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-    <path d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2z"/>
+  <svg width="16" height="16" viewBox="0 0 16 16">
+    <line x1="8" y1="3" x2="8" y2="13" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+    <line x1="3" y1="8" x2="13" y2="8" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
   </svg>
 )
 
@@ -35,7 +36,7 @@ export default function StickyNotesManager() {
   const [notes, setNotes] = useState<StickyNoteData[]>([])
   const [loaded, setLoaded] = useState(false)
   const [visible, setVisible] = useState(true)
-  const [expanded, setExpanded] = useState(true)
+  const [hovered, setHovered] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -93,43 +94,65 @@ export default function StickyNotesManager() {
           bottom: 20,
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center',
-          gap: 12,
+          alignItems: 'flex-end',
+          gap: 10,
           zIndex: 2147483647,
           pointerEvents: 'auto',
         }}
       >
-        {/* eye button — toggles visibility AND expand/collapse */}
+
+        {/* eye button — always fixed at the bottom, only toggles note visibility */}
         <button
           type="button"
           className="launcher-eye"
-          onClick={() => {
-            if (expanded) {
-              // collapse: hide the + button and hide notes
-              setExpanded(false)
-              setVisible(false)
-            } else {
-              // expand: show + button and show notes
-              setExpanded(true)
-              setVisible(true)
-            }
-          }}
-          title={expanded ? 'Collapse (hide notes)' : 'Expand (show notes)'}
+          onClick={() => setVisible(v => !v)}
+          title={visible ? 'Hide notes' : 'Show notes'}
         >
-          <IEye crossed={!expanded} />
+          <IEye crossed={!visible} />
         </button>
 
-        {/* + button — only visible when expanded */}
-        {expanded && (
-          <button
-            type="button"
-            className="launcher-add"
-            onClick={handleAddNote}
-            title="Add sticky note"
+        {/* + button — always visible, expands leftward on hover */}
+        <button
+          type="button"
+          onClick={handleAddNote}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center', // 👈 ALWAYS center
+          
+            height: 48,
+            borderRadius: 999,
+            background: '#6A8EBE',
+            color: 'white',
+            border: 'none',
+            cursor: 'pointer',
+          
+            width: hovered ? 140 : 48,
+            padding: hovered ? '0 14px' : '0', // 👈 cleaner
+          
+            transition: 'all 0.25s ease',
+            overflow: 'hidden',
+          }}
+          
+          title="Add sticky note"
+        >
+          <IPlus />
+          <span
+            style={{
+              opacity: hovered ? 1 : 0,
+              marginLeft: hovered ? 8 : 0, // 👈 use margin instead of gap
+              transform: hovered ? 'translateX(0)' : 'translateX(8px)',
+              transition: 'all 0.2s ease',
+              whiteSpace: 'nowrap',
+            }}
           >
-            <IPlus />
-          </button>
-        )}
+            Add Note
+          </span>
+        </button>
+
+        
       </div>
     </>
   )

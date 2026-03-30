@@ -94,10 +94,10 @@ export default function RightContextPanel() {
       animate={{ x: 0,   opacity: 1 }}
       exit={{ x: 240, opacity: 0 }}
       transition={{ type: 'spring', stiffness: 320, damping: 34 }}
-      className="w-60 shrink-0 h-screen flex flex-col bg-sidebar border-l border-border overflow-hidden"
+      className="w-60 shrink-0 h-screen flex flex-col bg-white border-l border-slate-200 overflow-hidden"
     >
       {/* Header tabs */}
-      <div className="h-[52px] flex items-center px-4 border-b border-border shrink-0 gap-1">
+      <div className="h-[52px] flex items-center px-4 border-b border-slate-200 shrink-0 gap-1">
         {(['activity', 'insights'] as const).map(t => (
           <button
             key={t}
@@ -105,8 +105,8 @@ export default function RightContextPanel() {
             className={cn(
               'flex-1 h-7 rounded-md text-xs font-semibold transition-colors cursor-pointer',
               tab === t
-                ? 'bg-primary/10 text-primary'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent/40',
+                ? 'bg-[#F1F1EF] text-[#37352F]'
+                : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100',
             )}
           >
             {t === 'activity' ? 'Activity' : 'Insights'}
@@ -119,32 +119,32 @@ export default function RightContextPanel() {
         {/* ── Activity tab ── */}
         {tab === 'activity' && (
           <>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 px-1 mb-2">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-1 mb-2">
               Recent Workspace Activity
             </p>
             {feedLoading && (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
               </div>
             )}
             {!feedLoading && feed.length === 0 && (
-              <p className="text-[11px] text-muted-foreground/60 px-1">No activity yet.</p>
+              <p className="text-[11px] text-slate-300 px-1">No activity yet.</p>
             )}
             {!feedLoading && feed.map(item => {
               const Icon = KIND_ICON[item.type] ?? KIND_ICON[item.kind] ?? Activity
               const color = item.kind === 'extraction' ? '#f59e0b' : item.type === 'ai-summary' ? '#5FA8A1' : '#6C91C2'
               return (
-                <div key={item.id} className="flex items-start gap-2.5 px-2 py-2 rounded-lg hover:bg-accent/30 transition-colors">
+                <div key={item.id} className="flex items-start gap-2.5 px-2 py-2 rounded-lg hover:bg-slate-50 transition-colors">
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: color + '22' }}>
                     <Icon className="w-3.5 h-3.5" style={{ color }} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[12px] font-semibold text-foreground truncate">{item.label}</p>
-                    <p className="text-[10.5px] text-muted-foreground truncate">{item.sub}</p>
+                    <p className="text-[12px] font-semibold text-slate-700 truncate">{item.label}</p>
+                    <p className="text-[10.5px] text-slate-400 truncate">{item.sub}</p>
                     {item.snippet && (
-                      <p className="text-[10px] text-muted-foreground/60 truncate mt-0.5">{item.snippet}</p>
+                      <p className="text-[10px] text-slate-300 truncate mt-0.5">{item.snippet}</p>
                     )}
-                    <p className="text-[10px] text-muted-foreground/50 mt-0.5">{relTime(item.time)}</p>
+                    <p className="text-[10px] text-slate-300 mt-0.5">{relTime(item.time)}</p>
                   </div>
                 </div>
               )
@@ -156,24 +156,24 @@ export default function RightContextPanel() {
         {tab === 'insights' && (
           <>
             <div className="flex items-center gap-1.5 px-1 mb-3">
-              <Sparkles className="w-3.5 h-3.5 text-primary" />
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+              <Sparkles className="w-3.5 h-3.5 text-[#37352F]" />
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 AI Insights
               </p>
             </div>
             {insightLoading && (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
               </div>
             )}
             {!insightLoading && insightText && (
-              <div className="rounded-xl border border-border bg-primary/5 p-3">
-                <p className="text-[11.5px] text-foreground/80 leading-relaxed">{insightText}</p>
+              <div className="rounded-xl border border-slate-200 bg-[#F1F1EF] p-3">
+                <p className="text-[11.5px] text-slate-600 leading-relaxed">{insightText}</p>
               </div>
             )}
             {!insightLoading && !insightText && (
-              <p className="text-[11px] text-muted-foreground/60 px-1">
-                No OpenAI key configured or no data yet.
+              <p className="text-[11px] text-slate-300 px-1">
+                No AI insights available yet.
               </p>
             )}
           </>
@@ -181,8 +181,8 @@ export default function RightContextPanel() {
       </div>
 
       {/* Footer */}
-      <div className="px-3 py-3 border-t border-border shrink-0">
-        <div className="flex items-center gap-1.5 text-[10.5px] text-muted-foreground/60">
+      <div className="px-3 py-3 border-t border-slate-200 shrink-0">
+        <div className="flex items-center gap-1.5 text-[10.5px] text-slate-300">
           <Clock className="w-3 h-3" />
           <span>Workspace: {wsId}</span>
         </div>

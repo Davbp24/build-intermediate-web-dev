@@ -1,61 +1,77 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Anchor, RefreshCw, Map, BrainCircuit, Share2, Layers } from 'lucide-react'
+import { StickyNote, RefreshCw, MapPin, Sparkles, Share2, Users, Highlighter } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const CARDS = [
   {
-    title: 'DOM Anchoring',
-    description: 'Notes attach to exact DOM elements using XPath heuristics — they survive page refreshes, layout shifts, and re-renders.',
-    icon: Anchor,
+    title: 'Sticky Notes on Any Page',
+    description: 'Leave notes directly on websites — product pages, articles, competitor sites. They stay exactly where you put them, even after the page updates.',
+    icon: StickyNote,
     className: 'row-span-2 col-span-1',
-    accent: 'text-primary',
+    accent: 'text-[#37352F]',
+    iconBg: 'bg-[#F1F1EF] border-[#E3E2DE]',
     visual: 'anchor' as const,
     surface: 'solid' as const,
   },
   {
-    title: 'Local-First Persistence',
-    description: 'IndexedDB keeps every annotation instant and offline-ready. Cloud sync happens in the background.',
+    title: 'Works Offline, Syncs Later',
+    description: 'Your notes are saved locally first, so they load instantly. Sync to the cloud happens quietly in the background.',
     icon: RefreshCw,
     className: 'col-span-1',
     accent: 'text-emerald-600',
+    iconBg: 'bg-emerald-50 border-emerald-200',
     visual: 'none' as const,
     surface: 'dashed' as const,
   },
   {
-    title: 'Spatial Map View',
-    description: 'Every geo-tagged note plotted on a live map. See your research at city scale.',
-    icon: Map,
+    title: 'Highlight & Annotate',
+    description: 'Select any text on any page and mark it up with color-coded highlights. Add context so you remember why it mattered.',
+    icon: Highlighter,
+    className: 'col-span-1',
+    accent: 'text-orange-600',
+    iconBg: 'bg-orange-50 border-orange-200',
+    visual: 'none' as const,
+    surface: 'solid' as const,
+  },
+  {
+    title: 'See Everything on a Map',
+    description: 'Notes about places — restaurants, apartments, travel spots — show up on a live map so you can see your research at a glance.',
+    icon: MapPin,
     className: 'col-span-2',
-    accent: 'text-sky-600',
+    accent: 'text-amber-600',
+    iconBg: 'bg-amber-50 border-amber-200',
     visual: 'map' as const,
     surface: 'solid' as const,
   },
   {
-    title: 'AI Summaries',
-    description: 'Highlight any text and get an instant AI-generated summary or explanation, anchored to the exact paragraph.',
-    icon: BrainCircuit,
+    title: 'AI That Reads for You',
+    description: 'Highlight any paragraph and get a plain-English summary instantly. Great for long articles, terms of service, or dense reports.',
+    icon: Sparkles,
     className: 'col-span-1',
     accent: 'text-violet-600',
+    iconBg: 'bg-violet-50 border-violet-200',
     visual: 'none' as const,
     surface: 'dashed' as const,
   },
   {
-    title: 'Knowledge Graph',
-    description: 'A force-directed graph reveals connections between notes across domains, tags, and topics.',
+    title: 'Connect the Dots',
+    description: 'A visual map of how your notes relate — across websites, topics, and tags. Patterns emerge that you would have missed.',
     icon: Share2,
     className: 'col-span-1',
-    accent: 'text-pink-600',
+    accent: 'text-rose-600',
+    iconBg: 'bg-rose-50 border-rose-200',
     visual: 'none' as const,
     surface: 'solid' as const,
   },
   {
-    title: 'Shadow DOM Isolation',
-    description: 'All injected UI is encapsulated in a Shadow DOM, so your notes never bleed into or inherit styles from host pages.',
-    icon: Layers,
+    title: 'Built for Teams',
+    description: 'Share workspaces with your team. Everyone sees the same notes on the same pages — perfect for reviews, QA, and research.',
+    icon: Users,
     className: 'col-span-1',
-    accent: 'text-amber-600',
+    accent: 'text-sky-600',
+    iconBg: 'bg-sky-50 border-sky-200',
     visual: 'none' as const,
     surface: 'dashed' as const,
   },
@@ -63,22 +79,17 @@ const CARDS = [
 
 function AnchorVisual() {
   return (
-    <div className="mt-4 relative h-32 rounded-2xl bg-slate-50 overflow-hidden border border-slate-200">
-      <div className="absolute inset-0 p-3 space-y-2 opacity-50">
-        <div className="h-2 w-3/4 bg-slate-300 rounded" />
-        <div className="h-2 w-full bg-slate-200 rounded" />
-        <div className="h-2 w-2/3 bg-slate-200 rounded" />
+    <div className="mt-4 relative rounded-lg bg-white border-2 border-slate-200 overflow-hidden p-3 space-y-2">
+      <div className="h-2 w-3/4 bg-slate-200 rounded" />
+      <div className="h-2 w-full bg-slate-100 rounded" />
+      <div className="flex items-center gap-2 mt-1">
+        <div className="h-2 w-1/3 bg-amber-300 rounded" />
+        <div className="h-px w-8 border-t-2 border-dashed border-[#8EB4DC]" />
+        <div className="bg-[#F1F1EF] border-2 border-[#8EB4DC] rounded px-2 py-1">
+          <p className="text-[8px] text-[#37352F] font-medium leading-tight">Check this →</p>
+        </div>
       </div>
-      <div className="absolute top-2 right-2 w-28 bg-amber-100 rounded-lg border border-slate-200 p-2 rotate-1">
-        <p className="text-slate-800 text-[9px] leading-tight font-medium">
-          Check this implementation →
-        </p>
-      </div>
-      <div className="absolute bottom-3 left-3 flex items-center gap-1.5">
-        <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-        <div className="h-px w-16 bg-primary/40" />
-        <div className="w-1.5 h-1.5 rounded-sm bg-primary/70" />
-      </div>
+      <div className="h-2 w-2/3 bg-slate-100 rounded" />
     </div>
   )
 }
@@ -89,15 +100,15 @@ function MapVisual() {
     { x: 70, y: 35 }, { x: 85, y: 55 }, { x: 45, y: 75 },
   ]
   return (
-    <div className="mt-4 relative h-20 rounded-2xl bg-slate-50 border border-slate-200 overflow-hidden">
-      <svg className="absolute inset-0 w-full h-full opacity-25" viewBox="0 0 100 80">
+    <div className="mt-4 relative h-20 rounded-lg bg-white border-2 border-slate-200 overflow-hidden">
+      <svg className="absolute inset-0 w-full h-full opacity-20" viewBox="0 0 100 80">
         <path d="M0 40 Q25 20 50 40 Q75 60 100 40" stroke="#64748b" strokeWidth="0.5" fill="none" />
         <path d="M0 55 Q30 35 60 55 Q80 65 100 55" stroke="#64748b" strokeWidth="0.5" fill="none" />
       </svg>
       {dots.map((dot, i) => (
         <div
           key={i}
-          className="absolute w-2 h-2 rounded-full bg-primary border border-slate-200"
+          className="absolute w-2.5 h-2.5 rounded-full bg-amber-400 border-2 border-amber-600"
           style={{ left: `${dot.x}%`, top: `${dot.y}%`, transform: 'translate(-50%,-50%)' }}
         />
       ))}
@@ -107,17 +118,17 @@ function MapVisual() {
 
 export default function BentoGrid() {
   return (
-    <section id="how-it-works" className="py-24 px-6 bg-slate-50 border-t border-slate-200">
+    <section id="how-it-works" className="py-24 px-6 bg-[#FFF7F0] border-t-2 border-[#F5D6BC]">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-16">
-          <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-3">
+          <p className="text-xs font-bold uppercase tracking-widest text-[#C4845C] mb-3">
             How it works
           </p>
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 mb-4">
-            Built for how researchers think
+            Seven tools, one extension
           </h2>
           <p className="text-slate-600 max-w-xl mx-auto">
-            Six capabilities working together to make the entire web your second brain.
+            Everything you need to capture, organize, and share what you find on the web — whether you work solo or with a team.
           </p>
         </div>
 
@@ -133,22 +144,23 @@ export default function BentoGrid() {
                 viewport={{ once: true, margin: '-40px' }}
                 transition={{ duration: 0.35, delay: i * 0.05 }}
                 className={cn(
-                  'group relative rounded-3xl p-6 overflow-hidden transition-colors duration-300',
+                  'group relative rounded-xl p-6 overflow-hidden transition-colors duration-200',
                   isSolid
-                    ? 'bg-white border border-slate-200 hover:border-slate-300'
-                    : 'bg-transparent border-2 border-dashed border-slate-300 hover:border-slate-400',
+                    ? 'bg-white border-2 border-[#E8D5C4] hover:border-[#D4B89A]'
+                    : 'bg-white/50 border-2 border-dashed border-[#DCC4AE] hover:border-[#C4A68A]',
                   card.className,
                 )}
               >
                 <div
                   className={cn(
-                    'w-9 h-9 rounded-md border border-slate-200 bg-white flex items-center justify-center mb-4',
+                    'w-9 h-9 rounded-lg border flex items-center justify-center mb-4',
+                    card.iconBg,
                     card.accent,
                   )}
                 >
                   <Icon className="w-4 h-4" />
                 </div>
-                <h3 className="text-sm font-semibold text-slate-900 mb-2">{card.title}</h3>
+                <h3 className="text-sm font-bold text-slate-900 mb-2">{card.title}</h3>
                 <p className="text-xs text-slate-600 leading-relaxed">{card.description}</p>
 
                 {card.visual === 'anchor' && <AnchorVisual />}
