@@ -47,6 +47,22 @@ body{
     border-radius: 2px 2px 0 0;
 }
 
+.title-input{
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: rgba(0,0,0,0.72);
+    caret-color: rgba(0,0,0,0.55);
+}
+
+.title-input::placeholder{
+    color: rgba(0,0,0,0.3);
+}
+
 .header-actions{
     display: flex;
     gap: 4px;
