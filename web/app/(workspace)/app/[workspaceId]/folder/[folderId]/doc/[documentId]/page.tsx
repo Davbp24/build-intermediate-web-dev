@@ -1,0 +1,410 @@
+'use client'
+
+import { useEffect, useState, useCallback, useRef } from 'react'
+import Link from 'next/link'
+import { useParams } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { getWorkspaceName } from '@/lib/workspaces'
+import {
+  getDocumentById,
+  upsertFolderDocument,
+  type FolderDocument,
+} from '@/lib/workspace-library'
+import { findFolder, loadWorkspaceFolders } from '@/lib/workspace-folders'
+import FolderDocumentEditor from '@/components/documents/FolderDocumentEditor'
+import {
+  ArrowLeft, Clock, Star, Share2, MessageCircle,
+  UserPlus, X, Send, MoreHorizontal,
+} from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { cn } from '@/lib/utils'
+
+function loadSidebarFolderName(workspaceId: string, folderId: string): string | null {
+  if (typeof window === 'undefined') return null
+  const f = findFolder(loadWorkspaceFolders(), workspaceId, folderId)
+  return f?.name ?? null
+}
+
+interface Comment {
+  id: string
+  author: string
+  text: string
+  time: number
+}
+
+export default function FolderDocumentEditorPage() {
+  const params = useParams()
+  const workspaceId  = Array.isArray(params.workspaceId)  ? params.workspaceId[0]!  : (params.workspaceId  as string)
+  const folderId     = Array.isArray(params.folderId)     ? params.folderId[0]!     : (params.folderId     as string)
+  const documentId   = Array.isArray(params.documentId)   ? params.documentId[0]!   : (params.documentId   as string)
+  const workspaceName = getWorkspaceName(workspaceId)
+  const [folderName, setFolderName] = useState('Folder')
+
+  const [doc,        setDoc]        = useState<FolderDocument | null>(null)
+  const [title,      setTitle]      = useState('')
+  const [subtitle,   setSubtitle]   = useState('')
+  const [savedFlash, setSavedFlash] = useState(false)
+  const [isFav,      setIsFav]      = useState(false)
+
+  const [showComments,  setShowComments]  = useState(false)
+  const [showInvite,    setShowInvite]    = useState(false)
+  const [comments,      setComments]      = useState<Comment[]>([])
+  const [commentDraft,  setCommentDraft]  = useState('')
+  const [inviteEmail,   setInviteEmail]   = useState('')
+  const [inviteSent,    setInviteSent]    = useState(false)
+  const commentInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    setFolderName(loadSidebarFolderName(workspaceId, folderId) ?? 'Folder')
+    const sync = () => setFolderName(loadSidebarFolderName(workspaceId, folderId) ?? 'Folder')
+    window.addEventListener('inline-folders-changed', sync)
+    const onStorage = (e: StorageEvent) => { if (e.key === 'inline-folders') sync() }
+    window.addEventListener('storage', onStorage)
+    return () => {
+      window.removeEventListener('inline-folders-changed', sync)
+      window.removeEventListener('storage', onStorage)
+    }
+  }, [workspaceId, folderId])
+
+  useEffect(() => {
+    const d = getDocumentById(documentId)
+    if (!d || d.workspaceId !== workspaceId || d.folderId !== folderId) { setDoc(null); return }
+    setDoc(d)
+    setTitle(d.title)
+    // Load comments from local storage
+    try {
+      const saved = localStorage.getItem(`doc-comments-${documentId}`)
+      if (saved) setComments(JSON.parse(saved))
+    } catch { /* ignore */ }
+  }, [documentId, workspaceId, folderId])
+
+  const persist = useCallback((nextTitle: string, nextContent: string) => {
+    if (!doc) return
+    const updated: FolderDocument = {
+      ...doc,
+      title:     nextTitle.trim() || 'Untitled',
+      content:   nextContent,
+      updatedAt: Date.now(),
+    }
+    upsertFolderDocument(updated)
+    setDoc(updated)
+    setSavedFlash(true)
+    setTimeout(() => setSavedFlash(false), 1200)
+  }, [doc])
+
+  const handleContentChange = useCallback((html: string) => {
+    if (!doc) return
+    persist(title, html)
+  }, [doc, title, persist])
+
+  function addComment() {
+    if (!commentDraft.trim()) return
+    const next = [...comments, {
+      id: crypto.randomUUID(),
+      author: 'You',
+      text: commentDraft.trim(),
+      time: Date.now(),
+    }]
+    setComments(next)
+    setCommentDraft('')
+    localStorage.setItem(`doc-comments-${documentId}`, JSON.stringify(next))
+    commentInputRef.current?.focus()
+  }
+
+  function deleteComment(id: string) {
+    const next = comments.filter(c => c.id !== id)
+    setComments(next)
+    localStorage.setItem(`doc-comments-${documentId}`, JSON.stringify(next))
+  }
+
+  function handleInvite() {
+    if (!inviteEmail.trim()) return
+    setInviteSent(true)
+    setTimeout(() => { setInviteSent(false); setInviteEmail(''); setShowInvite(false) }, 1800)
+  }
+
+  const timeSince = (ms: number) => {
+    const diff = Date.now() - ms
+    if (diff < 60000) return 'just now'
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
+    return new Date(ms).toLocaleDateString()
+  }
+
+  if (!doc) {
+    return (
+      <div className="min-h-full bg-white p-8">
+        <p className="text-slate-500">Document not found.</p>
+        <Link href={`/app/${workspaceId}/folder/${folderId}`} className="text-[#37352F] text-sm mt-4 inline-block cursor-pointer">
+          &larr; Back to folder
+        </Link>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-full bg-white flex flex-col">
+      {/* ── Top nav bar ── */}
+      <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200 bg-white shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <Link
+            href={`/app/${workspaceId}/folder/${folderId}`}
+            className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors cursor-pointer shrink-0"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+
+          <div className="w-8 h-8 rounded-lg bg-[#EDEBE8] border border-[#E3E2DE] flex items-center justify-center shrink-0">
+            <span className="text-[#37352F] text-sm font-bold">{(title || 'U')[0].toUpperCase()}</span>
+          </div>
+
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-slate-800 truncate">{title || 'Untitled'}</p>
+            <p className="text-[11px] text-slate-400">{folderName} &middot; {workspaceName}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <span className={cn(
+            'text-xs px-2 py-0.5 rounded-full transition-all',
+            savedFlash ? 'text-emerald-600 bg-emerald-50' : 'text-slate-400'
+          )}>
+            {savedFlash ? 'Saved' : <><Clock className="w-3 h-3 inline-block mr-1" />Auto-saving</>}
+          </span>
+
+          <button
+            type="button"
+            onClick={() => setShowComments(v => !v)}
+            className={cn(
+              'w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer',
+              showComments ? 'bg-[#F1F1EF] text-[#37352F]' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
+            )}
+            title="Comments"
+          >
+            <MessageCircle className="w-4 h-4" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowInvite(true)}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer"
+            title="Invite collaborator"
+          >
+            <Share2 className="w-4 h-4" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsFav(v => !v)}
+            className={cn(
+              'w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer',
+              isFav ? 'text-amber-500' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
+            )}
+            title="Favorite"
+          >
+            <Star className="w-4 h-4" fill={isFav ? 'currentColor' : 'none'} />
+          </button>
+
+          <button
+            type="button"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer"
+          >
+            <MoreHorizontal className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* ── Main area ── */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* ── Document editor ── */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-3xl mx-auto px-8 py-10">
+            {/* Title */}
+            <input
+              type="text"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              onBlur={() => persist(title, doc.content)}
+              placeholder="Title of this note"
+              aria-label="Document title"
+              className="w-full text-3xl font-bold text-slate-800 placeholder:text-slate-300 bg-transparent border-0 outline-none focus:ring-0 mb-1 leading-tight"
+            />
+
+            {/* Subtitle */}
+            <input
+              type="text"
+              value={subtitle}
+              onChange={e => setSubtitle(e.target.value)}
+              placeholder="Add a subtitle to this note"
+              className="w-full text-base text-slate-400 placeholder:text-slate-300 bg-transparent border-0 outline-none focus:ring-0 mb-6"
+            />
+
+            {/* Collaborators preview + invite inline */}
+            <div className="flex items-center gap-3 mb-6 pb-6 border-b border-slate-200">
+              <div className="flex -space-x-2">
+                <div className="w-8 h-8 rounded-full bg-[#EDEBE8] border-2 border-white flex items-center justify-center text-xs font-bold text-[#37352F]">
+                  Y
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowInvite(true)}
+                className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-[#37352F] transition-colors cursor-pointer"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                Add new editor
+              </button>
+            </div>
+
+            
+
+            {/* Editor */}
+            <FolderDocumentEditor
+              content={doc.content}
+              onChange={handleContentChange}
+            />
+          </div>
+        </div>
+
+        {/* ── Comments panel ── */}
+        <AnimatePresence>
+          {showComments && (
+            <motion.div
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: 320, opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              transition={{ duration: 0.2, ease: 'easeInOut' }}
+              className="border-l border-slate-200 bg-white flex flex-col overflow-hidden shrink-0"
+            >
+              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                <h3 className="text-sm font-semibold text-slate-700">Comments</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowComments(false)}
+                  className="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {comments.length === 0 && (
+                  <p className="text-sm text-slate-400 text-center py-8">
+                    No comments yet. Start a conversation about this document.
+                  </p>
+                )}
+                {comments.map(c => (
+                  <div key={c.id} className="group">
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-7 h-7 rounded-full bg-[#EDEBE8] flex items-center justify-center text-xs font-bold text-[#37352F] shrink-0 mt-0.5">
+                        {c.author[0]}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-slate-700">{c.author}</span>
+                          <span className="text-[10px] text-slate-400">{timeSince(c.time)}</span>
+                          <button
+                            type="button"
+                            onClick={() => deleteComment(c.id)}
+                            className="ml-auto opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-400 transition-all cursor-pointer"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                        <p className="text-sm text-slate-600 mt-0.5 leading-relaxed">{c.text}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-3 border-t border-slate-100">
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={commentInputRef}
+                    type="text"
+                    value={commentDraft}
+                    onChange={e => setCommentDraft(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') addComment() }}
+                    placeholder="Write a comment..."
+                    className="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 outline-none focus:border-[#C4D4E4] focus:bg-white transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={addComment}
+                    disabled={!commentDraft.trim()}
+                    className="w-8 h-8 rounded-lg bg-[#191919] text-white flex items-center justify-center disabled:opacity-40 cursor-pointer hover:bg-[#150C00] transition-colors shrink-0"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* ── Invite modal ── */}
+      <AnimatePresence>
+        {showInvite && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-black/30 flex items-center justify-center"
+            onClick={() => setShowInvite(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-white rounded-2xl border border-slate-200 w-full max-w-md p-6 mx-4"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-slate-800">Invite to this document</h3>
+                <button type="button" onClick={() => setShowInvite(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <p className="text-sm text-slate-500 mb-4">
+                Share this document with teammates. They&apos;ll get edit access.
+              </p>
+
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={e => setInviteEmail(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleInvite() }}
+                  placeholder="name@example.com"
+                  className="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2.5 outline-none focus:border-[#C4D4E4] transition-colors"
+                />
+                <Button
+                  onClick={handleInvite}
+                  disabled={!inviteEmail.trim() || inviteSent}
+                  className="bg-[#191919] hover:bg-[#150C00] text-white cursor-pointer"
+                >
+                  {inviteSent ? 'Sent!' : 'Invite'}
+                </Button>
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-slate-100">
+                <p className="text-xs font-medium text-slate-500 mb-2">People with access</p>
+                <div className="flex items-center gap-3 py-2">
+                  <div className="w-8 h-8 rounded-full bg-[#EDEBE8] flex items-center justify-center text-xs font-bold text-[#37352F]">Y</div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-slate-700">You</p>
+                    <p className="text-xs text-slate-400">Owner</p>
+                  </div>
+                  <span className="text-xs text-slate-400 bg-slate-50 px-2 py-0.5 rounded">Owner</span>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}

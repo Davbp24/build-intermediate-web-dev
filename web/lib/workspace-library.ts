@@ -1,0 +1,77 @@
+/**
+ * Per-workspace folder documents (Grammarly-style library).
+ * Stored in localStorage until Supabase backs it.
+ */
+
+export interface FolderDocument {
+  id: string
+  workspaceId: string
+  folderId: string
+  title: string
+  content: string
+  updatedAt: number
+  createdAt: number
+}
+
+const STORAGE_KEY = 'inline-folder-documents'
+
+export function loadFolderDocuments(): FolderDocument[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as unknown
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+export function saveFolderDocuments(docs: FolderDocument[]) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(docs))
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('inline-folder-docs-changed'))
+  }
+}
+
+export function getDocumentsForFolder(workspaceId: string, folderId: string): FolderDocument[] {
+  return loadFolderDocuments().filter(d => d.workspaceId === workspaceId && d.folderId === folderId)
+}
+
+export function getDocumentById(id: string): FolderDocument | undefined {
+  return loadFolderDocuments().find(d => d.id === id)
+}
+
+export function upsertFolderDocument(doc: FolderDocument) {
+  const all = loadFolderDocuments()
+  const i = all.findIndex(d => d.id === doc.id)
+  if (i >= 0) all[i] = doc
+  else all.push(doc)
+  saveFolderDocuments(all)
+}
+
+export function deleteFolderDocument(id: string) {
+  saveFolderDocuments(loadFolderDocuments().filter(d => d.id !== id))
+}
+
+/** Remove all documents whose folderId is in the set (same workspace). */
+export function deleteDocumentsInFolders(workspaceId: string, folderIds: Set<string>) {
+  saveFolderDocuments(
+    loadFolderDocuments().filter(d => !(d.workspaceId === workspaceId && folderIds.has(d.folderId))),
+  )
+}
+
+export function createFolderDocument(workspaceId: string, folderId: string, title: string): FolderDocument {
+  const now = Date.now()
+  const doc: FolderDocument = {
+    id: `doc-${now}-${Math.random().toString(36).slice(2, 9)}`,
+    workspaceId,
+    folderId,
+    title: title.trim() || 'Untitled document',
+    content: '',
+    createdAt: now,
+    updatedAt: now,
+  }
+  upsertFolderDocument(doc)
+  return doc
+}
