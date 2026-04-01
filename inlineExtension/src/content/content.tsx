@@ -53,3 +53,9 @@ if (!document.getElementById(HOST_ID)) {
     </>,
   )
 }
+
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.action === 'addNote') {
+    document.dispatchEvent(new CustomEvent('inline:addNote'))
+  }
+})

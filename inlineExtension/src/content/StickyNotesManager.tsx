@@ -43,6 +43,9 @@ export default function StickyNotesManager() {
     loadNotes(PAGE_URL).then(saved => { setNotes(saved); setLoaded(true) })
   }, [])
 
+  
+
+  // --- Debounced save whenever notes change (after initial load) ---
   useEffect(() => {
     if (!loaded) return
     if (saveTimer.current) clearTimeout(saveTimer.current)
@@ -78,6 +81,18 @@ export default function StickyNotesManager() {
     (id: string) => setNotes(prev => prev.filter(n => n.id !== id)),
     [],
   )
+
+  //addNote signal for content script message listener
+
+  useEffect(() => {
+    const handler = () => handleAddNote()
+
+    document.addEventListener('inline:addNote', handler)
+    return () => {
+      document.removeEventListener('inline:addNote', handler)
+    }
+
+  }, [handleAddNote])
 
   return (
     <>
