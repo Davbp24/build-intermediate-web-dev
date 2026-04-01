@@ -2,12 +2,13 @@
  * Content Script Entry Point
  *
  * Creates an isolated Shadow DOM container, injects scoped CSS,
- * and mounts SmartOverlay (selection toolbar, highlights, modals)
- * and StickyNotesManager inside it.
+ * and mounts SmartOverlay (selection toolbar, highlights, modals),
+ * StickyNotesManager, and the floating panel toolbar (Home) inside it.
  */
 import { createRoot } from 'react-dom/client'
 import StickyNotesManager from './StickyNotesManager'
 import SmartOverlay from './SmartOverlay'
+import PanelHost from './PanelHost'
 import { restoreHighlights } from './highlightWrap'
 import cssText from './content.css?inline'
 
@@ -41,7 +42,8 @@ if (!document.getElementById(HOST_ID)) {
     .launcher-eye, .launcher-add,
     .inline-toolbar, .inline-toolbar *,
     .inline-anchor, .inline-anchor *,
-    .inline-modal-backdrop, .inline-modal-backdrop * {
+    .inline-modal-backdrop, .inline-modal-backdrop *,
+    [data-panel-host], [data-panel-host] * {
       pointer-events: auto;
     }
   `
@@ -52,6 +54,7 @@ if (!document.getElementById(HOST_ID)) {
     <>
       <SmartOverlay />
       <StickyNotesManager />
+      <PanelHost />
     </>,
   )
 }
