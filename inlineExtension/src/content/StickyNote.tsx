@@ -74,7 +74,6 @@ export default function StickyNote({ note, onUpdate, onDelete }: StickyNoteProps
   const [isDragging, setIsDragging] = useState(false)
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [titleDraft, setTitleDraft] = useState(note.title ?? 'Note')
-  const [bodyFocused, setBodyFocused] = useState(false)
   const [showPalette, setShowPalette] = useState(false)
   const dragOffset = useRef({ x: 0, y: 0 })
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -227,19 +226,17 @@ export default function StickyNote({ note, onUpdate, onDelete }: StickyNoteProps
         </div>
       )}
 
-      {/* ── formatting bar (only when body focused) ── */}
-      {bodyFocused && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 2,
-          padding: '3px 7px',
-          background: 'rgba(255,255,255,0.6)',
-          borderBottom: `1px solid ${preset.header}`,
-        }}>
-          <FmtBtn onClick={() => fmt('bold')}><IBold /></FmtBtn>
-          <FmtBtn onClick={() => fmt('italic')}><IItalic /></FmtBtn>
-          <FmtBtn onClick={() => fmt('insertUnorderedList')}><IList /></FmtBtn>
-        </div>
-      )}
+      {/* ── formatting bar (always visible) ── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 2,
+        padding: '4px 8px',
+        background: 'rgba(255,255,255,0.65)',
+        borderBottom: `1px solid ${preset.header}`,
+      }}>
+        <FmtBtn onClick={() => fmt('bold')}><IBold /></FmtBtn>
+        <FmtBtn onClick={() => fmt('italic')}><IItalic /></FmtBtn>
+        <FmtBtn onClick={() => fmt('insertUnorderedList')}><IList /></FmtBtn>
+      </div>
 
       {/* ── body ── */}
       <div
@@ -248,8 +245,6 @@ export default function StickyNote({ note, onUpdate, onDelete }: StickyNoteProps
         contentEditable
         suppressContentEditableWarning
         onInput={handleInput}
-        onFocus={() => setBodyFocused(true)}
-        onBlur={() => setBodyFocused(false)}
         data-placeholder="Start typing…"
         style={{ background: 'rgba(255,255,255,0.55)' }}
       />

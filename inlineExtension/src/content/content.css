@@ -1,6 +1,4 @@
-/* ===== Inline Extension — Shadow DOM Styles ===== */
-
-/* ─── Sticky note card ─── */
+/* ─── Sticky Note Card ─── */
 .sticky-note {
   display: flex;
   flex-direction: column;
@@ -67,19 +65,11 @@
 
 .sticky-palette-btn:hover {
   background: rgba(0,0,0,0.06);
-  color: rgba(100,116,139,0.9);
+  color: rgba(71,85,105,0.9);
 }
 
+/* ─── Colored status dot ─── */
 .sticky-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  opacity: 0.7;
-}
-
-.sticky-note-delete {
-  all: unset;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -94,8 +84,25 @@
   transition: background 0.1s, color 0.1s;
 }
 
+/* ─── Delete / close button ─── */
+.sticky-note-delete {
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 16px;
+  font-weight: 400;
+  color: rgba(100,116,139,0.5);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.1s, color 0.1s;
+}
+
 .sticky-note-delete:hover {
-  background: rgba(239,68,68,0.1);
+  background: rgba(239,68,68,0.12);
   color: #ef4444;
 }
 
@@ -109,9 +116,8 @@
   overflow-y: auto;
   cursor: text;
   user-select: text;
-  outline: none;
   word-break: break-word;
-  min-height: 60px;
+  outline: none;
 }
 
 .sticky-note-body:empty::before {
@@ -121,23 +127,30 @@
   pointer-events: none;
 }
 
-/* ─── Formatting bar ─── */
-.sticky-fmt-bar {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 4px 8px;
-  border-top: 1px solid rgba(226,232,240,0.5);
-  background: rgba(248,250,252,0.7);
+.sticky-note-body b,
+.sticky-note-body strong { font-weight: 700; }
+
+.sticky-note-body ul,
+.sticky-note-body ol {
+  margin: 2px 0;
+  padding-left: 18px;
 }
 
-/* ─── Resize corner handle ─── */
+.sticky-note-body li {
+  margin-bottom: 2px;
+}
+
+/* ─── Resize corner ─── */
 .sticky-resize {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
   display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  padding: 3px 4px 2px;
-  cursor: se-resize;
+  align-items: center;
+  justify-content: center;
   user-select: none;
   flex-shrink: 0;
   background: transparent;
@@ -151,6 +164,14 @@
 
 /* ─── Launcher: eye + add circles ─── */
 .add-note-launcher {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  z-index: 2147483647;
   pointer-events: auto;
 }
 
@@ -159,25 +180,21 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   background: #ffffff;
+  color: #64748b;
   border: 1.5px solid #e2e8f0;
-  color: #475569;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
-  box-sizing: border-box;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
 
 .launcher-eye:hover {
   background: #f8fafc;
-  border-color: #cbd5e1;
   color: #334155;
-}
-
-.launcher-eye:active {
-  background: #f1f5f9;
+  border-color: #cbd5e1;
 }
 
 .launcher-add {
@@ -192,8 +209,7 @@
   color: #ffffff;
   cursor: pointer;
   transition: background 0.15s;
-  border: 1.5px solid transparent;
-  box-sizing: border-box;
+  box-shadow: 0 2px 10px rgba(106,142,190,0.3);
 }
 
 .launcher-add:hover {
@@ -205,11 +221,6 @@
 }
 
 /* ─── SmartOverlay pointer events ─── */
-.inline-toolbar,
-.inline-toolbar *,
-.inline-anchor,
-.inline-anchor *,
-.inline-modal-backdrop,
-.inline-modal-backdrop * {
-  pointer-events: auto;
-}
+.inline-toolbar { pointer-events: auto; }
+.inline-anchor { pointer-events: auto; }
+.inline-modal-backdrop { pointer-events: auto; }

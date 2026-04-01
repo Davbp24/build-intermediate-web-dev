@@ -43,9 +43,6 @@ export default function StickyNotesManager() {
     loadNotes(PAGE_URL).then(saved => { setNotes(saved); setLoaded(true) })
   }, [])
 
-  
-
-  // --- Debounced save whenever notes change (after initial load) ---
   useEffect(() => {
     if (!loaded) return
     if (saveTimer.current) clearTimeout(saveTimer.current)
@@ -82,18 +79,6 @@ export default function StickyNotesManager() {
     [],
   )
 
-  //addNote signal for content script message listener
-
-  useEffect(() => {
-    const handler = () => handleAddNote()
-
-    document.addEventListener('inline:addNote', handler)
-    return () => {
-      document.removeEventListener('inline:addNote', handler)
-    }
-
-  }, [handleAddNote])
-
   return (
     <>
       {visible && notes.map(note => (
@@ -129,35 +114,33 @@ export default function StickyNotesManager() {
         {/* + button — always visible, expands leftward on hover */}
         <button
           type="button"
+          className="launcher-add"
           onClick={handleAddNote}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
           style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center', // 👈 ALWAYS center
-          
+            justifyContent: 'center',
             height: 48,
             borderRadius: 999,
             background: '#6A8EBE',
             color: 'white',
             border: 'none',
             cursor: 'pointer',
-          
             width: hovered ? 140 : 48,
-            padding: hovered ? '0 14px' : '0', // 👈 cleaner
-          
+            padding: hovered ? '0 14px' : '0',
             transition: 'all 0.25s ease',
             overflow: 'hidden',
+            boxShadow: '0 2px 10px rgba(106,142,190,0.3)',
           }}
-          
           title="Add sticky note"
         >
           <IPlus />
           <span
             style={{
               opacity: hovered ? 1 : 0,
-              marginLeft: hovered ? 8 : 0, // 👈 use margin instead of gap
+              marginLeft: hovered ? 8 : 0,
               transform: hovered ? 'translateX(0)' : 'translateX(8px)',
               transition: 'all 0.2s ease',
               whiteSpace: 'nowrap',

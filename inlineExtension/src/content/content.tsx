@@ -37,6 +37,8 @@ if (!document.getElementById(HOST_ID)) {
   const extraStyle = document.createElement('style')
   extraStyle.textContent = `
     .sticky-note, .add-note-button,
+    .add-note-launcher, .add-note-launcher *,
+    .launcher-eye, .launcher-add,
     .inline-toolbar, .inline-toolbar *,
     .inline-anchor, .inline-anchor *,
     .inline-modal-backdrop, .inline-modal-backdrop * {
