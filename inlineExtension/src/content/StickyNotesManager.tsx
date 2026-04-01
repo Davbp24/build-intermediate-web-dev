@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import StickyNote, { PALETTE } from './StickyNote'
-import { loadNotes, saveNotes, generateNoteId, type StickyNoteData } from './storage'
+import {
+  generateNoteId,
+  type StickyNoteData,
+} from './storage'
 
 const PAGE_URL = window.location.href
 const SAVE_DEBOUNCE_MS = 500
@@ -39,18 +42,38 @@ export default function StickyNotesManager() {
   const [hovered, setHovered] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // --- Mark as loaded on mount (retrieval from Supabase will be added later) ---
   useEffect(() => {
-    loadNotes(PAGE_URL).then(saved => { setNotes(saved); setLoaded(true) })
+    setLoaded(true)
   }, [])
 
-  
-
-  // --- Debounced save whenever notes change (after initial load) ---
   useEffect(() => {
     if (!loaded) return
-    if (saveTimer.current) clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(() => saveNotes(PAGE_URL, notes), SAVE_DEBOUNCE_MS)
-    return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
+
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current)
+    }
+    saveTimer.current = setTimeout(() => {
+      chrome.runtime.sendMessage(
+        {
+          type: 'SAVE_ANNOTATIONS',
+          payload: { pageUrl: PAGE_URL, featureKey: 'stickyNotes', data: notes },
+        },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            console.error('[Inline] Message failed:', chrome.runtime.lastError.message)
+          } else if (!response?.ok) {
+            console.error('[Inline] Backend sync failed:', response?.error)
+          }
+        },
+      )
+    }, SAVE_DEBOUNCE_MS)
+
+    return () => {
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current)
+      }
+    }
   }, [notes, loaded])
 
   const handleAddNote = useCallback(() => {
@@ -81,18 +104,6 @@ export default function StickyNotesManager() {
     (id: string) => setNotes(prev => prev.filter(n => n.id !== id)),
     [],
   )
-
-  //addNote signal for content script message listener
-
-  useEffect(() => {
-    const handler = () => handleAddNote()
-
-    document.addEventListener('inline:addNote', handler)
-    return () => {
-      document.removeEventListener('inline:addNote', handler)
-    }
-
-  }, [handleAddNote])
 
   return (
     <>
@@ -129,35 +140,29 @@ export default function StickyNotesManager() {
         {/* + button — always visible, expands leftward on hover */}
         <button
           type="button"
+          className="launcher-add"
           onClick={handleAddNote}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
           style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center', // 👈 ALWAYS center
-          
+            justifyContent: 'center',
             height: 48,
             borderRadius: 999,
             background: '#6A8EBE',
             color: 'white',
             border: 'none',
             cursor: 'pointer',
-          
             width: hovered ? 140 : 48,
-            padding: hovered ? '0 14px' : '0', // 👈 cleaner
-          
-            transition: 'all 0.25s ease',
-            overflow: 'hidden',
-          }}
-          
+            padding: hovered ? '0 14px' : '0',
           title="Add sticky note"
         >
           <IPlus />
           <span
             style={{
               opacity: hovered ? 1 : 0,
-              marginLeft: hovered ? 8 : 0, // 👈 use margin instead of gap
+              marginLeft: hovered ? 8 : 0,
               transform: hovered ? 'translateX(0)' : 'translateX(8px)',
               transition: 'all 0.2s ease',
               whiteSpace: 'nowrap',
