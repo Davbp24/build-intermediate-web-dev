@@ -32,14 +32,22 @@ export default defineConfig({
   build: {
     outDir: "dist",
     emptyOutDir: true,
+    cssCodeSplit: false,
     rollupOptions: {
       input: {
         main: resolve(__dirname, "index.html"),
+        background: resolve(__dirname, "src/background/background.ts"),
+        content: resolve(__dirname, "src/content/content.tsx"),
       },
       output: {
         assetFileNames: "assets/[name]-[hash].[ext]",
-        entryFileNames: "assets/[name]-[hash].js",
+        entryFileNames: (chunkInfo) => {
+          if (chunkInfo.name === "content") return "content.js";
+          if (chunkInfo.name === "background") return "background.js";
+          return "assets/[name]-[hash].js";
+        },
         chunkFileNames: "assets/[name]-[hash].js",
+        inlineDynamicImports: false,
       },
     },
   },
