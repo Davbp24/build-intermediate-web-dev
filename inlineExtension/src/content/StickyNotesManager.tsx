@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import StickyNote, { PALETTE } from './StickyNote'
-import { loadNotes, saveNotes, generateNoteId, type StickyNoteData } from './storage'
+import {
+  generateNoteId,
+  type StickyNoteData,
+} from './storage'
 
 const PAGE_URL = window.location.href
 const SAVE_DEBOUNCE_MS = 500
@@ -39,8 +42,9 @@ export default function StickyNotesManager() {
   const [hovered, setHovered] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // --- Mark as loaded on mount (retrieval from Supabase will be added later) ---
   useEffect(() => {
-    loadNotes(PAGE_URL).then(saved => { setNotes(saved); setLoaded(true) })
+    setLoaded(true)
   }, [])
 
   
@@ -48,9 +52,31 @@ export default function StickyNotesManager() {
   // --- Debounced save whenever notes change (after initial load) ---
   useEffect(() => {
     if (!loaded) return
-    if (saveTimer.current) clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(() => saveNotes(PAGE_URL, notes), SAVE_DEBOUNCE_MS)
-    return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
+
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current)
+    }
+    saveTimer.current = setTimeout(() => {
+      chrome.runtime.sendMessage(
+        {
+          type: 'SAVE_ANNOTATIONS',
+          payload: { pageUrl: PAGE_URL, featureKey: 'stickyNotes', data: notes },
+        },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            console.error('[Inline] Message failed:', chrome.runtime.lastError.message)
+          } else if (!response?.ok) {
+            console.error('[Inline] Backend sync failed:', response?.error)
+          }
+        },
+      )
+    }, SAVE_DEBOUNCE_MS)
+
+    return () => {
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current)
+      }
+    }
   }, [notes, loaded])
 
   const handleAddNote = useCallback(() => {
@@ -135,7 +161,7 @@ export default function StickyNotesManager() {
           style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center', // 👈 ALWAYS center
+            justifyContent: 'center',
           
             height: 48,
             borderRadius: 999,
@@ -145,7 +171,7 @@ export default function StickyNotesManager() {
             cursor: 'pointer',
           
             width: hovered ? 140 : 48,
-            padding: hovered ? '0 14px' : '0', // 👈 cleaner
+            padding: hovered ? '0 14px' : '0',
           
             transition: 'all 0.25s ease',
             overflow: 'hidden',
@@ -157,7 +183,7 @@ export default function StickyNotesManager() {
           <span
             style={{
               opacity: hovered ? 1 : 0,
-              marginLeft: hovered ? 8 : 0, // 👈 use margin instead of gap
+              marginLeft: hovered ? 8 : 0,
               transform: hovered ? 'translateX(0)' : 'translateX(8px)',
               transition: 'all 0.2s ease',
               whiteSpace: 'nowrap',
