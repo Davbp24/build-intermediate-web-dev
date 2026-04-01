@@ -1,10 +1,4 @@
 import { useNavigate } from "react-router-dom";
-import { DiAptana } from "react-icons/di";
-import { IoIosArrowDroprightCircle } from "react-icons/io";
-import { FaPencil } from "react-icons/fa6";
-
-
-import "./Home.css";
 
 function Home() {
   const navigate = useNavigate();
@@ -13,27 +7,30 @@ function Home() {
     <div className="home-screen">
     {/* Top Navigation */}
         <div className="top-bar">
-          <div className="logo-container">
-            <div className="logo" aria-label="Logo"><FaPencil /></div>
+            <img src="https://via.placeholder.com/150" alt="Logo" className="logo" />
             <h1 className="app-name">Inline</h1>
-          </div>
-           <div className="nav-buttons">
-            <button onClick={() => navigate('/settings')} className="settings-button"><DiAptana /></button>
-            <button className='back-button' onClick={() => navigate('/')}><IoIosArrowDroprightCircle /></button>
-           </div>
-            
+            <button onClick={() => navigate('/settings')} className="settings-button">Settings</button>
+            <button className='back-button' onClick={() => navigate('/')}>Back</button>
         </div>
       
       {/* Main Content */}
-    
-        <div className="content">
-        <h2>Make every page truly yours</h2>
 
-        <p>Pick a tool. Customize anything. Drag and drop elements to create your perfect page.</p>
-        </div>
-    
-       
-      
+      <div className="content">
+        <h2>Make every page truly yours</h2>
+        <p>
+          Pick a tool. Customize anything. Drag and drop elements to create your
+          perfect page.
+        </p>
+      </div>
+
+      {/* Bottom Navigation */}
+      <div className="bottom-bar">
+        <button onClick={() => navigate("/notes")}>Notes</button>
+        <button onClick={() => navigate("/draw")}>Draw</button>
+        <button onClick={() => navigate("/rewrite")}>Rewrite</button>
+        <button onClick={() => navigate("/ai")}>AI</button>
+        <button onClick={() => navigate("/highlighter")}>Highlighter</button>
+      </div>
     </div>
   );
 }
