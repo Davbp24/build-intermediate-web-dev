@@ -1,55 +1,51 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { resolve } from 'path'
-import { copyFileSync, mkdirSync } from 'fs'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import { resolve } from "path";
+import { copyFileSync, mkdirSync } from "fs";
+
+const copyExtensionFiles = {
+  name: "copy-extension-files",
+  closeBundle() {
+    mkdirSync(resolve(__dirname, "dist"), { recursive: true });
+    copyFileSync(
+      resolve(__dirname, "public/manifest.json"),
+      resolve(__dirname, "dist/manifest.json"),
+    );
+    try {
+      copyFileSync(
+        resolve(__dirname, "public/vite.svg"),
+        resolve(__dirname, "dist/vite.svg"),
+      );
+    } catch {
+      // Icon is optional
+    }
+  },
+};
 
 export default defineConfig({
-  // Replace process.env.NODE_ENV — browsers don't have `process`
   define: {
-    'process.env.NODE_ENV': '"production"',
+    "process.env.NODE_ENV": '"production"',
   },
-  plugins: [
-    react(),
-    {
-      // Copy manifest.json and popup assets into dist/ after build
-      name: 'copy-extension-files',
-      closeBundle() {
-        mkdirSync(resolve(__dirname, 'dist'), { recursive: true })
-        copyFileSync(
-          resolve(__dirname, 'public/manifest.json'),
-          resolve(__dirname, 'dist/manifest.json'),
-        )
-        // Copy popup entry (index.html) and icon
-        try {
-          copyFileSync(
-            resolve(__dirname, 'public/vite.svg'),
-            resolve(__dirname, 'dist/vite.svg'),
-          )
-        } catch {
-          // Icon is optional
-        }
-      },
-    },
-  ],
+  plugins: [react(), copyExtensionFiles],
   build: {
-    // Build the content script as a self-contained IIFE bundle
-    lib: {
-      entry: resolve(__dirname, 'src/content/content.tsx'),
-      name: 'InlineContent',
-      formats: ['iife'],
-      fileName: () => 'content.js',
-    },
-    outDir: 'dist',
+    outDir: "dist",
     emptyOutDir: true,
+    cssCodeSplit: false,
     rollupOptions: {
+      input: {
+        main: resolve(__dirname, "index.html"),
+        background: resolve(__dirname, "src/background/background.ts"),
+        content: resolve(__dirname, "src/content/content.tsx"),
+      },
       output: {
-        // Ensure everything is inlined into a single file
-        inlineDynamicImports: true,
-        // No separate CSS file — CSS is inlined via ?inline import
-        assetFileNames: 'assets/[name]-[hash].[ext]',
+        assetFileNames: "assets/[name]-[hash].[ext]",
+        entryFileNames: (chunkInfo) => {
+          if (chunkInfo.name === "content") return "content.js";
+          if (chunkInfo.name === "background") return "background.js";
+          return "assets/[name]-[hash].js";
+        },
+        chunkFileNames: "assets/[name]-[hash].js",
       },
     },
-    // Don't extract CSS to a separate file (it's inlined into JS via ?inline)
-    cssCodeSplit: false,
   },
-})
+});
