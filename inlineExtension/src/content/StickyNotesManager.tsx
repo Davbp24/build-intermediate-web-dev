@@ -156,6 +156,7 @@ export default function StickyNotesManager() {
             cursor: 'pointer',
             width: hovered ? 140 : 48,
             padding: hovered ? '0 14px' : '0',
+          }}
           title="Add sticky note"
         >
           <IPlus />
