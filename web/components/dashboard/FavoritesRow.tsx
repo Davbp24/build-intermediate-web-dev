@@ -12,18 +12,18 @@ interface FavoritesRowProps { items: Note[] }
 type IconCfg = { icon: React.ComponentType<{ className?: string }>; color: string; bg: string }
 
 const DOMAIN_ICON: Record<string, IconCfg> = {
-  'github.com':                 { icon: Code2,        color: '#6C91C2', bg: '#DCE6F4' },
-  'zillow.com':                 { icon: Home,         color: '#5FA8A1', bg: '#E6F4F2' },
-  'stripe.com':                 { icon: CreditCard,   color: '#9065B0', bg: '#F3E8FF' },
-  'linear.app':                 { icon: Layers,       color: '#6C91C2', bg: '#DCE6F4' },
-  'vercel.com':                 { icon: Zap,          color: '#191919', bg: '#F1F1EF' },
+  'github.com':                 { icon: Code2,        color: '#57534e', bg: '#E7E5E4' },
+  'zillow.com':                 { icon: Home,         color: '#0f766e', bg: '#E6F4F2' },
+  'stripe.com':                 { icon: CreditCard,   color: '#7c3aed', bg: '#EDE9FE' },
+  'linear.app':                 { icon: Layers,       color: '#57534e', bg: '#E7E5E4' },
+  'vercel.com':                 { icon: Zap,          color: '#1C1E26', bg: '#F1F1EF' },
   'news.ycombinator.com':       { icon: Newspaper,    color: '#CB912F', bg: '#FDECC8' },
 }
 
 const TYPE_ICON: Record<string, IconCfg> = {
-  'text':       { icon: FileText,     color: '#6C91C2', bg: '#DCE6F4' },
-  'canvas':     { icon: PenTool,      color: '#9065B0', bg: '#F3E8FF' },
-  'ai-summary': { icon: BrainCircuit, color: '#5FA8A1', bg: '#E6F4F2' },
+  'text':       { icon: FileText,     color: '#57534e', bg: '#E7E5E4' },
+  'canvas':     { icon: PenTool,      color: '#7c3aed', bg: '#EDE9FE' },
+  'ai-summary': { icon: BrainCircuit, color: '#0f766e', bg: '#E6F4F2' },
 }
 
 function getIconCfg(note: Note): IconCfg {
@@ -36,7 +36,7 @@ function getIconCfg(note: Note): IconCfg {
 const MOCK_USERS = [
   { name: 'Wonpil',  avatar: 'W', color: '#D9730D' },
   { name: 'Young K', avatar: 'Y', color: '#9065B0' },
-  { name: 'Dowoon',  avatar: 'D', color: '#4B83C4' },
+  { name: 'Dowoon',  avatar: 'D', color: '#57534e' },
   { name: 'Park S',  avatar: 'P', color: '#0F7B6C' },
   { name: 'Jae W',   avatar: 'J', color: '#C4554D' },
   { name: 'Brian L', avatar: 'B', color: '#CB912F' },

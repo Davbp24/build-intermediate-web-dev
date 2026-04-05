@@ -54,6 +54,7 @@ if (!document.getElementById(HOST_ID)) {
     <>
       <SmartOverlay />
       <StickyNotesManager />
+      {/* After sticky layer so the right toolbar paints above any full-page hit areas */}
       <PanelHost />
     </>,
   )

@@ -1,24 +1,14 @@
 import { useState, useCallback } from 'react'
-
-const C = {
-  bg: '#ffffff',
-  headerBg: '#fdf2f8',
-  border: '#e2e8f0',
-  shadow: '4px 4px 0px #E2E8F0',
-  text: '#0f172a',
-  textMuted: '#64748b',
-  accent: '#ec4899',
-  radius: 12,
-}
+import { PANEL as C, FONT } from '../lib/extensionTheme'
 
 const IHighlight = () => (
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="#ec4899">
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="#1C1E26">
     <path d="M5.884 6.68a.5.5 0 1 0-.768.64L7.349 10l-2.233 2.68a.5.5 0 0 0 .768.64L8 10.781l2.116 2.54a.5.5 0 0 0 .768-.641L8.651 10l2.233-2.68a.5.5 0 0 0-.768-.64L8 9.219l-2.116-2.54z"/>
     <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/>
   </svg>
 )
 const IClose = () => (
-  <svg width="12" height="12" viewBox="0 0 16 16" fill="#64748b">
+  <svg width="12" height="12" viewBox="0 0 16 16" fill="#78716c">
     <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
   </svg>
 )
@@ -61,7 +51,7 @@ export default function Highlighter({ onClose }: HighlighterProps) {
   return (
     <div style={{
       width: 200, background: C.bg, border: `1.5px solid ${C.border}`,
-      borderRadius: C.radius, boxShadow: C.shadow, fontFamily: 'system-ui, sans-serif',
+      borderRadius: C.radius, boxShadow: C.shadow, fontFamily: FONT,
       overflow: 'hidden', userSelect: 'none',
     }}>
       {/* Header */}
@@ -89,7 +79,7 @@ export default function Highlighter({ onClose }: HighlighterProps) {
             style={{
               width: 28, height: 28, borderRadius: 6,
               background: color, cursor: 'pointer',
-              border: active === color ? '2.5px solid #0f172a' : '2px solid transparent',
+              border: active === color ? `2.5px solid ${C.accent}` : '2px solid transparent',
               transition: 'border-color 0.1s',
             }}
           />

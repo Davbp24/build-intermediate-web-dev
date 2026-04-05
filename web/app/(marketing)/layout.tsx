@@ -1,10 +1,11 @@
-import { Inter } from 'next/font/google'
+import { DM_Sans } from 'next/font/google'
 import MarketingNav from '@/components/marketing/MarketingNav'
 import MarketingFooter from '@/components/marketing/MarketingFooter'
 
-const inter = Inter({
+const dmSans = DM_Sans({
   subsets: ['latin'],
   display: 'swap',
+  variable: '--font-dm',
 })
 
 export default function MarketingLayout({
@@ -13,9 +14,9 @@ export default function MarketingLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className={`${inter.className} bg-slate-50 text-slate-900 min-h-screen antialiased`}>
+    <div className={`${dmSans.variable} ${dmSans.className} bg-[#FDFBF7] text-[#1C1E26] min-h-screen antialiased`}>
       <MarketingNav />
-      <main className="pt-24 md:pt-28">{children}</main>
+      <main className="pt-20 md:pt-24">{children}</main>
       <MarketingFooter />
     </div>
   )

@@ -1,27 +1,15 @@
 import { useState, useRef, useCallback } from 'react'
 import { wrapSelectionWithHighlight } from '../content/highlightWrap'
 import { loadSettings } from '../lib/extensionSettings'
-
-const C = {
-  bg: '#ffffff',
-  headerBg: '#f0f9ff',
-  border: '#e2e8f0',
-  shadow: '4px 4px 0px #E2E8F0',
-  text: '#0f172a',
-  textMuted: '#64748b',
-  textLight: '#94a3b8',
-  accent: '#2563eb',
-  hoverBg: '#f1f5f9',
-  radius: 12,
-}
+import { PANEL as C, FONT } from '../lib/extensionTheme'
 
 const ISparkle = () => (
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="#2563eb">
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="#1C1E26">
     <path d="M7.657 6.247c.11-.33.576-.33.686 0l.645 1.937a2.89 2.89 0 0 0 1.829 1.828l1.936.645c.33.11.33.576 0 .686l-1.937.645a2.89 2.89 0 0 0-1.828 1.829l-.645 1.936a.361.361 0 0 1-.686 0l-.645-1.937a2.89 2.89 0 0 0-1.828-1.828l-1.937-.645a.361.361 0 0 1 0-.686l1.937-.645a2.89 2.89 0 0 0 1.828-1.829l.645-1.936zM3.794 1.148a.217.217 0 0 1 .412 0l.387 1.162c.173.518.61.955 1.128 1.128l1.162.387a.217.217 0 0 1 0 .412l-1.162.387A1.734 1.734 0 0 0 4.593 5.75l-.387 1.162a.217.217 0 0 1-.412 0L3.407 5.75a1.734 1.734 0 0 0-1.127-1.128l-1.163-.387a.217.217 0 0 1 0-.412l1.163-.387a1.734 1.734 0 0 0 1.127-1.128l.387-1.162z"/>
   </svg>
 )
 const IClose = () => (
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="#64748b">
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="#78716c">
     <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
   </svg>
 )
@@ -62,7 +50,7 @@ export default function AI({ selectedText, onClose }: AIProps) {
   return (
     <div style={{
       width: 220, background: C.bg, border: `1.5px solid ${C.border}`,
-      borderRadius: C.radius, boxShadow: C.shadow, fontFamily: 'system-ui, sans-serif',
+      borderRadius: C.radius, boxShadow: C.shadow, fontFamily: FONT,
       overflow: 'hidden', userSelect: 'none',
     }}>
       {/* Header */}
@@ -87,7 +75,7 @@ export default function AI({ selectedText, onClose }: AIProps) {
               display: 'block', width: '100%', textAlign: 'left',
               padding: '7px 10px', border: 'none', borderRadius: 6,
               background: 'transparent', fontSize: 13, color: C.text,
-              cursor: 'pointer', fontWeight: 500,
+              cursor: 'pointer', fontWeight: 500, fontFamily: FONT,
             }}
             onMouseEnter={e => (e.currentTarget.style.background = C.hoverBg)}
             onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
@@ -107,7 +95,7 @@ export default function AI({ selectedText, onClose }: AIProps) {
             width: '100%', boxSizing: 'border-box', padding: '7px 10px',
             border: `1.5px solid ${C.border}`, borderRadius: 8,
             fontSize: 12, outline: 'none', color: C.text,
-            fontFamily: 'system-ui, sans-serif',
+            fontFamily: FONT,
           }}
         />
       </div>

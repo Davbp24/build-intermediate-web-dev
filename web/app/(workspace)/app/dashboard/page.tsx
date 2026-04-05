@@ -20,11 +20,11 @@ async function StatsSection() {
   const stats = await fetchDashboardStats(DEFAULT_WORKSPACE_ID)
 
   const kpis = [
-    { title: 'Notes This Week',  value: stats.notesThisWeek,              delta: stats.notesThisWeekDelta, deltaLabel: 'vs last week', icon: BookMarked,   iconColor: 'text-primary' },
-    { title: 'Total Notes',      value: stats.totalNotes.toLocaleString(), description: 'Across all domains',        icon: BarChart2,    iconColor: 'text-violet-500' },
-    { title: 'Domains Tracked',  value: stats.totalDomains,               description: 'Unique websites',           icon: Globe,        iconColor: 'text-sky-500' },
-    { title: 'AI Queries Run',   value: stats.aiQueriesRun,               description: 'Summaries generated',       icon: BrainCircuit, iconColor: 'text-emerald-500' },
-    { title: 'Day Streak',       value: `${stats.streakDays}d`,           description: 'Consecutive active days',   icon: Flame,        iconColor: 'text-amber-500' },
+    { title: 'Notes This Week',  value: stats.notesThisWeek,              delta: stats.notesThisWeekDelta, deltaLabel: 'vs last week', icon: BookMarked,   iconColor: 'text-stone-700' },
+    { title: 'Total Notes',      value: stats.totalNotes.toLocaleString(), description: 'Across all domains',        icon: BarChart2,    iconColor: 'text-teal-800' },
+    { title: 'Domains Tracked',  value: stats.totalDomains,               description: 'Unique websites',           icon: Globe,        iconColor: 'text-amber-800' },
+    { title: 'AI Queries Run',   value: stats.aiQueriesRun,               description: 'Summaries generated',       icon: BrainCircuit, iconColor: 'text-stone-600' },
+    { title: 'Day Streak',       value: `${stats.streakDays}d`,           description: 'Consecutive active days',   icon: Flame,        iconColor: 'text-orange-800' },
   ]
 
   return (

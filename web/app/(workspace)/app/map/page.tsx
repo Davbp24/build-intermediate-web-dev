@@ -10,20 +10,18 @@ export default async function MapPage() {
   const coordinates = await fetchMapCoordinates()
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    <div className="flex h-screen flex-col overflow-hidden bg-background">
       <PageHeader
         crumbs={[{ label: 'Workspace', href: '/app/dashboard' }, { label: 'Spatial Map' }]}
-        title="Spatial Map"
-        subtitle="Geographic distribution of your tracked entities."
         action={
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground px-2 py-1 rounded-md bg-muted/60 border border-border/60">
-            <Layers className="w-3 h-3" />
-            {coordinates.length} points
+          <span className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/60 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+            <Layers className="h-3 w-3" />
+            {coordinates.length} locations
           </span>
         }
       />
-      <div className="flex-1 relative overflow-hidden">
-        <SpatialMap coordinates={coordinates} />
+      <div className="relative flex-1 overflow-hidden">
+        <SpatialMap coordinates={coordinates} storageKey="inline-map-pins-global" />
       </div>
     </div>
   )

@@ -18,7 +18,8 @@ interface Crumb { label: string; href?: string }
 
 interface PageHeaderProps {
   crumbs:     Crumb[]
-  title:      string
+  /** Optional; when set, shown below the crumb row (most pages use their own page title instead). */
+  title?:     string
   titleSlot?: React.ReactNode
   subtitle?:  string
   action?:    React.ReactNode
@@ -95,6 +96,13 @@ export default function PageHeader({ crumbs, title, titleSlot, subtitle, action,
           </DropdownMenu>
         </div>
       </div>
+
+      {(title || subtitle) && (
+        <div className="px-6 pb-3 pt-0.5 min-w-0 space-y-0.5">
+          {title && <h1 className="text-lg font-semibold tracking-tight text-slate-900">{title}</h1>}
+          {subtitle && <p className="text-sm text-slate-500">{subtitle}</p>}
+        </div>
+      )}
 
       {titleSlot && (
         <div className="px-6 pb-3 pt-0.5 min-w-0">{titleSlot}</div>

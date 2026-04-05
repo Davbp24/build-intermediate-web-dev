@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import Rewrite from './Rewrite'
 import AI from './AI'
 import Notes from './Notes'
@@ -8,50 +8,46 @@ import Draw from './Draw'
 
 type PanelId = 'rewrite' | 'ai' | 'notes' | 'settings' | 'highlighter' | 'draw' | null
 
-const C = {
-  bg: '#ffffff',
-  headerBg: '#f0f9ff',
-  border: '#e2e8f0',
-  shadow: '4px 4px 0px #E2E8F0',
-  text: '#0f172a',
-  textMuted: '#64748b',
-  accent: '#2563eb',
-  radius: 12,
-  hoverBg: '#f1f5f9',
-}
+const ACCENT = '#1C1E26'
+const FONT = '-apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif'
 
-/* ─── Mini icons for the bottom bar ─── */
 const IRewrite = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-    <path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708l-3-3z"/>
-    <path d="M13.5 6.207 9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207l6.5-6.5z"/>
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
   </svg>
 )
 const IAi = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-    <path d="M7.657 6.247c.11-.33.576-.33.686 0l.645 1.937a2.89 2.89 0 0 0 1.829 1.828l1.936.645c.33.11.33.576 0 .686l-1.937.645a2.89 2.89 0 0 0-1.828 1.829l-.645 1.936a.361.361 0 0 1-.686 0l-.645-1.937a2.89 2.89 0 0 0-1.828-1.828l-1.937-.645a.361.361 0 0 1 0-.686l1.937-.645a2.89 2.89 0 0 0 1.828-1.829l.645-1.936z"/>
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z"/>
   </svg>
 )
 const INotes = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-    <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2zm2-1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H4z"/>
-    <path d="M5 4h6v1H5V4zm0 3h6v1H5V7zm0 3h4v1H5v-1z"/>
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+    <polyline points="14 2 14 8 20 8"/>
+    <line x1="16" y1="13" x2="8" y2="13"/>
+    <line x1="16" y1="17" x2="8" y2="17"/>
+    <line x1="10" y1="9" x2="8" y2="9"/>
   </svg>
 )
 const IDraw = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-    <path d="M15.825.12a.5.5 0 0 1 .132.584c-1.53 3.43-4.743 8.17-7.095 10.64a6.067 6.067 0 0 1-2.373 1.534c-.018.227-.06.538-.16.868-.201.659-.667 1.479-1.708 1.74a8.118 8.118 0 0 1-3.078.132 3.659 3.659 0 0 1-.562-.135 1.382 1.382 0 0 1-.466-.247.714.714 0 0 1-.204-.288.622.622 0 0 1 .004-.443c.095-.245.316-.38.461-.452.394-.197.625-.453.867-.826.095-.144.184-.297.287-.472l.117-.198c.151-.255.326-.54.546-.848.528-.739 1.201-.925 1.746-.896.126.007.243.025.348.048.062-.172.142-.38.238-.608.261-.619.658-1.419 1.187-2.069 2.176-2.67 6.18-6.206 9.117-8.104a.5.5 0 0 1 .596.04z"/>
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 19l7-7 3 3-7 7-3-3z"/>
+    <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
+    <path d="M2 2l7.586 7.586"/>
+    <circle cx="11" cy="11" r="2"/>
   </svg>
 )
 const IHighlight = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-    <path d="M5.884 6.68a.5.5 0 1 0-.768.64L7.349 10l-2.233 2.68a.5.5 0 0 0 .768.64L8 10.781l2.116 2.54a.5.5 0 0 0 .768-.641L8.651 10l2.233-2.68a.5.5 0 0 0-.768-.64L8 9.219l-2.116-2.54z"/>
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 11l-6 6v3h9l3-3"/>
+    <path d="M22 12l-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/>
   </svg>
 )
 const ISettings = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-    <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
-    <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319z"/>
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="3"/>
+    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
   </svg>
 )
 
@@ -61,82 +57,58 @@ interface HomeProps {
 }
 
 export default function Home({ selectedText, originalRange }: HomeProps) {
-  const [activePanel, setActivePanel] = useState<PanelId>(null)
-  const [pos, setPos] = useState({ x: 40, y: 40 })
+  const [hoveredPanel, setHoveredPanel] = useState<PanelId>(null)
+  const [pinnedPanel, setPinnedPanel] = useState<PanelId>(null)
   const [notesOpen, setNotesOpen] = useState<{ x: number; y: number }[]>([])
-  const dragRef = useRef<{ ox: number; oy: number } | null>(null)
+
+  const activePanel = pinnedPanel ?? hoveredPanel
 
   const toggle = useCallback((id: PanelId) => {
     if (id === 'notes') {
       setNotesOpen(prev => [...prev, { x: 120 + prev.length * 20, y: 120 + prev.length * 20 }])
       return
     }
-    setActivePanel(p => p === id ? null : id)
+    setPinnedPanel(p => p === id ? null : id)
   }, [])
 
-  const closePanel = useCallback(() => setActivePanel(null), [])
-
-  /* drag the main bar */
-  const onPointerDown = useCallback((e: React.PointerEvent) => {
-    e.preventDefault()
-    dragRef.current = { ox: e.clientX - pos.x, oy: e.clientY - pos.y }
-    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
-  }, [pos])
-  const onPointerMove = useCallback((e: React.PointerEvent) => {
-    if (!dragRef.current) return
-    setPos({ x: e.clientX - dragRef.current.ox, y: e.clientY - dragRef.current.oy })
+  const closePanel = useCallback(() => {
+    setPinnedPanel(null)
+    setHoveredPanel(null)
   }, [])
-  const onPointerUp = useCallback(() => { dragRef.current = null }, [])
 
   const TOOLS: { id: PanelId; icon: React.ReactNode; label: string }[] = [
     { id: 'rewrite', icon: <IRewrite />, label: 'Rewrite' },
     { id: 'ai', icon: <IAi />, label: 'Ask AI' },
     { id: 'notes', icon: <INotes />, label: 'Note' },
     { id: 'draw', icon: <IDraw />, label: 'Draw' },
-    { id: 'highlighter', icon: <IHighlight />, label: 'Color' },
+    { id: 'highlighter', icon: <IHighlight />, label: 'Highlight' },
     { id: 'settings', icon: <ISettings />, label: 'Settings' },
   ]
 
   return (
     <>
-      {/* ─── Main floating toolbar ─── */}
-      <div style={{
-        position: 'fixed', left: pos.x, top: pos.y,
-        zIndex: 2147483646, pointerEvents: 'auto',
-      }}>
-        {/* Toolbar bar */}
-        <div
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          style={{
-            display: 'flex', alignItems: 'center',
-            background: C.bg, border: `1.5px solid ${C.border}`,
-            borderRadius: C.radius, boxShadow: C.shadow,
-            padding: '4px 6px', gap: 2, touchAction: 'none',
-            cursor: 'grab', fontFamily: 'system-ui, sans-serif',
-          }}
-        >
-          {TOOLS.map(t => (
-            <button
-              key={t.id}
-              onPointerDown={e => e.stopPropagation()}
-              onClick={() => toggle(t.id)}
-              title={t.label}
-              style={{
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                width: 34, height: 34, borderRadius: 8, border: 'none',
-                background: activePanel === t.id ? '#eff6ff' : 'transparent',
-                color: activePanel === t.id ? C.accent : C.textMuted,
-                cursor: 'pointer', transition: 'background 0.1s, color 0.1s',
-              }}
-            >{t.icon}</button>
-          ))}
-        </div>
-
-        {/* Active panel (floats below toolbar) */}
+      {/* Vertical sidebar bar - right edge, vertically centered */}
+      <div
+        style={{
+          position: 'fixed',
+          right: 12,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          zIndex: 2147483647,
+          pointerEvents: 'auto',
+          display: 'flex',
+          flexDirection: 'row',
+          alignItems: 'center',
+          fontFamily: FONT,
+        }}
+        onMouseLeave={() => { if (!pinnedPanel) setHoveredPanel(null) }}
+      >
+        {/* Flyout panel - appears to the LEFT of the bar */}
         {activePanel && activePanel !== 'notes' && (
-          <div style={{ marginTop: 8 }}>
+          <div
+            style={{ marginRight: 8, pointerEvents: 'auto' }}
+            onMouseEnter={() => { if (!pinnedPanel) setHoveredPanel(activePanel) }}
+          >
             {activePanel === 'rewrite' && (
               <Rewrite selectedText={selectedText} originalRange={originalRange} onClose={closePanel} />
             )}
@@ -157,9 +129,74 @@ export default function Home({ selectedText, originalRange }: HomeProps) {
             )}
           </div>
         )}
+
+        {/* The slim dark vertical pill */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 2,
+            padding: '10px 6px',
+            background: ACCENT,
+            borderRadius: 28,
+            boxShadow: '0 4px 24px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.12)',
+          }}
+        >
+          {/* Logo mark at top */}
+          <div
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 8,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 4,
+            }}
+          >
+            <div style={{
+              width: 4,
+              height: 16,
+              borderRadius: 2,
+              background: 'rgba(255,255,255,0.7)',
+              transform: 'rotate(-12deg)',
+            }} />
+          </div>
+
+          {/* Separator */}
+          <div style={{ width: 16, height: 1, background: 'rgba(255,255,255,0.12)', margin: '2px 0 4px' }} />
+
+          {/* Tool buttons */}
+          {TOOLS.map(t => {
+            const isActive = activePanel === t.id
+            return (
+              <button
+                key={t.id}
+                onClick={() => toggle(t.id)}
+                onMouseEnter={() => { if (!pinnedPanel) setHoveredPanel(t.id) }}
+                title={t.label}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  border: 'none',
+                  background: isActive ? 'rgba(255,255,255,0.15)' : 'transparent',
+                  color: isActive ? '#ffffff' : 'rgba(255,255,255,0.55)',
+                  cursor: 'pointer',
+                  transition: 'background 0.15s, color 0.15s',
+                  padding: 0,
+                }}
+              >{t.icon}</button>
+            )
+          })}
+        </div>
       </div>
 
-      {/* ─── Independent Notes panels ─── */}
+      {/* Independent Notes panels */}
       {notesOpen.map((n, i) => (
         <Notes
           key={i}

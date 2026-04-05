@@ -1,29 +1,17 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-
-/* ─── Flat Design Tokens ─── */
-const C = {
-  bg: '#ffffff',
-  headerBg: '#f0f9ff',
-  border: '#e2e8f0',
-  shadow: '4px 4px 0px #E2E8F0',
-  text: '#0f172a',
-  textMuted: '#64748b',
-  textLight: '#94a3b8',
-  accent: '#2563eb',
-  radius: 12,
-}
+import { PANEL as C, FONT } from '../lib/extensionTheme'
 
 type HeadingLevel = 'Normal' | 'Subheading' | 'Heading'
 
 /* ─── Icons ─── */
 const INote = () => (
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="#2563eb">
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="#1C1E26">
     <path d="M5 0h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2 2 2 0 0 1-2 2H3a2 2 0 0 1-2-2h1a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1H1a2 2 0 0 1 2-2h2V1a1 1 0 0 0-1 1H3a2 2 0 0 1 2-2z"/>
     <path d="M1 6v-.5a.5.5 0 0 1 1 0V6h.5a.5.5 0 0 1 0 1H2v.5a.5.5 0 0 1-1 0V7h-.5a.5.5 0 0 1 0-1H1z"/>
   </svg>
 )
 const IClose = () => (
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="#64748b">
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="#78716c">
     <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854z"/>
   </svg>
 )
@@ -102,7 +90,7 @@ export default function Notes({ onClose, initialX = 100, initialY = 100 }: Notes
       width: size.w, height: size.h,
       background: C.bg, border: `1.5px solid ${C.border}`,
       borderRadius: C.radius, boxShadow: C.shadow,
-      fontFamily: 'system-ui, sans-serif',
+      fontFamily: FONT,
       display: 'flex', flexDirection: 'column',
       overflow: 'hidden', zIndex: 2147483646,
       pointerEvents: 'auto',
@@ -164,7 +152,7 @@ export default function Notes({ onClose, initialX = 100, initialY = 100 }: Notes
         <ToolbarBtn onPointerDown={e => e.stopPropagation()} onClick={() => fmt('bold')} title="Bold"><b style={{ fontSize: 12 }}>B</b></ToolbarBtn>
         <ToolbarBtn onPointerDown={e => e.stopPropagation()} onClick={() => fmt('italic')} title="Italic"><i style={{ fontSize: 12 }}>I</i></ToolbarBtn>
         <ToolbarBtn onPointerDown={e => e.stopPropagation()} onClick={() => fmt('underline')} title="Underline">
-          <span style={{ fontSize: 12, fontWeight: 700, color: '#2563eb' }}>A</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#1C1E26' }}>A</span>
         </ToolbarBtn>
 
         <div style={{ width: 1, height: 18, background: C.border, margin: '0 4px', flexShrink: 0 }} />
@@ -207,7 +195,7 @@ export default function Notes({ onClose, initialX = 100, initialY = 100 }: Notes
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '6px 12px', borderTop: `1px solid ${C.border}`,
-        background: '#fafafa', flexShrink: 0,
+        background: C.surfaceMuted, flexShrink: 0,
       }}>
         <span style={{ fontSize: 10, color: C.textLight }}>By {author} | {timestamp}</span>
         <div
@@ -228,7 +216,7 @@ function ToolbarBtn({ children, ...props }: React.ButtonHTMLAttributes<HTMLButto
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         width: 26, height: 26, border: 'none', borderRadius: 6,
-        background: 'transparent', cursor: 'pointer', color: '#374151', padding: 0,
+        background: 'transparent', cursor: 'pointer', color: C.textMuted, padding: 0,
         ...props.style,
       }}
     >{children}</button>

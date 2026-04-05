@@ -1,23 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { PANEL as C, FONT } from '../lib/extensionTheme'
 
-const C = {
-  bg: '#ffffff',
-  headerBg: '#eff6ff',
-  border: '#e2e8f0',
-  shadow: '4px 4px 0px #E2E8F0',
-  text: '#0f172a',
-  textMuted: '#64748b',
-  textLight: '#94a3b8',
-  accent: '#2563eb',
-  radius: 12,
-  hoverBg: '#f1f5f9',
-}
-
-type Tool = 'pen' | 'marker' | 'fill' | 'eraser'
+type Tool = 'pen' | 'marker' | 'arrow' | 'rectangle' | 'ellipse' | 'eraser'
 
 const COLORS = [
-  '#0f172a', '#dc2626', '#2563eb', '#16a34a', '#f59e0b',
-  '#7c3aed', '#ec4899', '#06b6d4', '#ea580c', '#64748b',
+  '#1C1E26', '#dc2626', '#2563eb', '#16a34a', '#f59e0b',
+  '#7c3aed', '#ec4899', '#06b6d4', '#ea580c', '#78716c',
 ]
 
 /* ─── Tool icons ─── */
@@ -32,9 +20,20 @@ const IMarker = () => (
     <path d="M3 13.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5z"/>
   </svg>
 )
-const IFill = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-    <path d="M6.192 2.78c-.458-.677-.927-1.248-1.35-1.643a.5.5 0 0 0-.71.71c.392.398.96.867 1.635 1.328-.312.225-.613.47-.897.738-.09.07-.163.147-.238.225L2.147 6.624a.5.5 0 0 0 0 .706l4.263 4.263a.5.5 0 0 0 .706 0l5.001-5.001a.5.5 0 0 0 0-.706L6.192 2.78zm6.07 8.947a.517.517 0 0 1-.75 0c-.413-.426-1.115-1.266-.808-2.36.227-.808.79-1.418 1.482-1.419.689 0 1.255.611 1.483 1.42.31 1.094-.39 1.933-.808 2.36z"/>
+const IArrow = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="5" y1="19" x2="19" y2="5"/>
+    <polyline points="12 5 19 5 19 12"/>
+  </svg>
+)
+const IRectangle = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2"/>
+  </svg>
+)
+const IEllipse = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <ellipse cx="12" cy="12" rx="10" ry="7"/>
   </svg>
 )
 const IEraser = () => (
@@ -43,12 +42,12 @@ const IEraser = () => (
   </svg>
 )
 const IDraw = () => (
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="#2563eb">
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="#1C1E26">
     <path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708l-3-3zM13.5 6.207 9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207l6.5-6.5z"/>
   </svg>
 )
 const IClose = () => (
-  <svg width="12" height="12" viewBox="0 0 16 16" fill="#64748b">
+  <svg width="12" height="12" viewBox="0 0 16 16" fill="#78716c">
     <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
   </svg>
 )
@@ -65,6 +64,8 @@ export default function Draw({ onClose }: DrawProps) {
   const drawing = useRef(false)
   const pathData = useRef('')
   const currentPath = useRef<SVGPathElement | null>(null)
+  const startPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
+  const currentShapeEl = useRef<SVGElement | null>(null)
 
   /* ─── Create/remove SVG overlay on mount ─── */
   useEffect(() => {
@@ -84,8 +85,8 @@ export default function Draw({ onClose }: DrawProps) {
 
   const activateCanvas = useCallback(() => {
     if (!canvasRef.current) return
-    canvasRef.current.style.pointerEvents = tool === 'eraser' ? 'auto' : 'auto'
-  }, [tool])
+    canvasRef.current.style.pointerEvents = 'auto'
+  }, [])
 
   const deactivateCanvas = useCallback(() => {
     if (!canvasRef.current) return
@@ -102,35 +103,126 @@ export default function Draw({ onClose }: DrawProps) {
     function start(e: PointerEvent) {
       if (tool === 'eraser') return
       drawing.current = true
-      pathData.current = `M${e.clientX} ${e.clientY}`
-      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
-      path.setAttribute('d', pathData.current)
-      path.setAttribute('stroke', color)
-      path.setAttribute('stroke-width', String(tool === 'marker' ? thickness * 3 : thickness))
-      path.setAttribute('fill', 'none')
-      path.setAttribute('stroke-linecap', 'round')
-      path.setAttribute('stroke-linejoin', 'round')
-      if (tool === 'marker') path.setAttribute('opacity', '0.4')
-      path.setAttribute('data-inline-draw', 'true')
-      svgEl.appendChild(path)
-      currentPath.current = path
+      startPos.current = { x: e.clientX, y: e.clientY }
+
+      if (tool === 'pen' || tool === 'marker') {
+        pathData.current = `M${e.clientX} ${e.clientY}`
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+        path.setAttribute('d', pathData.current)
+        path.setAttribute('stroke', color)
+        path.setAttribute('stroke-width', String(tool === 'marker' ? thickness * 3 : thickness))
+        path.setAttribute('fill', 'none')
+        path.setAttribute('stroke-linecap', 'round')
+        path.setAttribute('stroke-linejoin', 'round')
+        if (tool === 'marker') path.setAttribute('opacity', '0.4')
+        path.setAttribute('data-inline-draw', 'true')
+        svgEl.appendChild(path)
+        currentPath.current = path
+      } else if (tool === 'arrow') {
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+        g.setAttribute('data-inline-draw', 'true')
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line')
+        line.setAttribute('x1', String(e.clientX))
+        line.setAttribute('y1', String(e.clientY))
+        line.setAttribute('x2', String(e.clientX))
+        line.setAttribute('y2', String(e.clientY))
+        line.setAttribute('stroke', color)
+        line.setAttribute('stroke-width', String(thickness))
+        line.setAttribute('stroke-linecap', 'round')
+        const head = document.createElementNS('http://www.w3.org/2000/svg', 'polygon')
+        head.setAttribute('fill', color)
+        head.setAttribute('points', '0,0 0,0 0,0')
+        g.appendChild(line)
+        g.appendChild(head)
+        svgEl.appendChild(g)
+        currentShapeEl.current = g
+      } else if (tool === 'rectangle') {
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+        rect.setAttribute('x', String(e.clientX))
+        rect.setAttribute('y', String(e.clientY))
+        rect.setAttribute('width', '0')
+        rect.setAttribute('height', '0')
+        rect.setAttribute('stroke', color)
+        rect.setAttribute('stroke-width', String(thickness))
+        rect.setAttribute('fill', 'none')
+        rect.setAttribute('rx', '2')
+        rect.setAttribute('data-inline-draw', 'true')
+        svgEl.appendChild(rect)
+        currentShapeEl.current = rect
+      } else if (tool === 'ellipse') {
+        const ellipse = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse')
+        ellipse.setAttribute('cx', String(e.clientX))
+        ellipse.setAttribute('cy', String(e.clientY))
+        ellipse.setAttribute('rx', '0')
+        ellipse.setAttribute('ry', '0')
+        ellipse.setAttribute('stroke', color)
+        ellipse.setAttribute('stroke-width', String(thickness))
+        ellipse.setAttribute('fill', 'none')
+        ellipse.setAttribute('data-inline-draw', 'true')
+        svgEl.appendChild(ellipse)
+        currentShapeEl.current = ellipse
+      }
     }
 
     function move(e: PointerEvent) {
-      if (!drawing.current || !currentPath.current) return
-      pathData.current += ` L${e.clientX} ${e.clientY}`
-      currentPath.current.setAttribute('d', pathData.current)
+      if (!drawing.current) return
+
+      if ((tool === 'pen' || tool === 'marker') && currentPath.current) {
+        pathData.current += ` L${e.clientX} ${e.clientY}`
+        currentPath.current.setAttribute('d', pathData.current)
+      } else if (tool === 'arrow' && currentShapeEl.current) {
+        const g = currentShapeEl.current
+        const line = g.querySelector('line')
+        const head = g.querySelector('polygon')
+        if (line && head) {
+          line.setAttribute('x2', String(e.clientX))
+          line.setAttribute('y2', String(e.clientY))
+          const sx = startPos.current.x, sy = startPos.current.y
+          const ex = e.clientX, ey = e.clientY
+          const angle = Math.atan2(ey - sy, ex - sx)
+          const headLen = Math.max(10, thickness * 4)
+          const p1x = ex - headLen * Math.cos(angle - Math.PI / 6)
+          const p1y = ey - headLen * Math.sin(angle - Math.PI / 6)
+          const p2x = ex - headLen * Math.cos(angle + Math.PI / 6)
+          const p2y = ey - headLen * Math.sin(angle + Math.PI / 6)
+          head.setAttribute('points', `${ex},${ey} ${p1x},${p1y} ${p2x},${p2y}`)
+        }
+      } else if (tool === 'rectangle' && currentShapeEl.current) {
+        const rect = currentShapeEl.current as SVGRectElement
+        const sx = startPos.current.x, sy = startPos.current.y
+        const x = Math.min(sx, e.clientX)
+        const y = Math.min(sy, e.clientY)
+        const w = Math.abs(e.clientX - sx)
+        const h = Math.abs(e.clientY - sy)
+        rect.setAttribute('x', String(x))
+        rect.setAttribute('y', String(y))
+        rect.setAttribute('width', String(w))
+        rect.setAttribute('height', String(h))
+      } else if (tool === 'ellipse' && currentShapeEl.current) {
+        const ellipse = currentShapeEl.current as SVGEllipseElement
+        const sx = startPos.current.x, sy = startPos.current.y
+        const cx = (sx + e.clientX) / 2
+        const cy = (sy + e.clientY) / 2
+        const rx = Math.abs(e.clientX - sx) / 2
+        const ry = Math.abs(e.clientY - sy) / 2
+        ellipse.setAttribute('cx', String(cx))
+        ellipse.setAttribute('cy', String(cy))
+        ellipse.setAttribute('rx', String(rx))
+        ellipse.setAttribute('ry', String(ry))
+      }
     }
 
     function end() {
       drawing.current = false
       currentPath.current = null
+      currentShapeEl.current = null
     }
 
     function erase(e: PointerEvent) {
       if (tool !== 'eraser') return
       const el = document.elementFromPoint(e.clientX, e.clientY)
       if (el && el.hasAttribute('data-inline-draw')) el.remove()
+      if (el?.parentElement && el.parentElement.hasAttribute('data-inline-draw')) el.parentElement.remove()
     }
 
     svgEl.addEventListener('pointerdown', start)
@@ -148,14 +240,16 @@ export default function Draw({ onClose }: DrawProps) {
   const tools: { id: Tool; icon: React.ReactNode; label: string }[] = [
     { id: 'pen', icon: <IPen />, label: 'Pen' },
     { id: 'marker', icon: <IMarker />, label: 'Marker' },
-    { id: 'fill', icon: <IFill />, label: 'Fill' },
+    { id: 'arrow', icon: <IArrow />, label: 'Arrow' },
+    { id: 'rectangle', icon: <IRectangle />, label: 'Rectangle' },
+    { id: 'ellipse', icon: <IEllipse />, label: 'Ellipse' },
     { id: 'eraser', icon: <IEraser />, label: 'Eraser' },
   ]
 
   return (
     <div style={{
       width: 220, background: C.bg, border: `1.5px solid ${C.border}`,
-      borderRadius: C.radius, boxShadow: C.shadow, fontFamily: 'system-ui, sans-serif',
+      borderRadius: C.radius, boxShadow: C.shadow, fontFamily: FONT,
       overflow: 'hidden', userSelect: 'none',
     }}>
       {/* Header */}
@@ -171,8 +265,11 @@ export default function Draw({ onClose }: DrawProps) {
         <button onClick={onClose} style={btnIcon}><IClose /></button>
       </div>
 
-      {/* Tool row */}
-      <div style={{ display: 'flex', gap: 6, padding: '10px 14px', justifyContent: 'center' }}>
+      {/* Tool grid – 3x2 */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+        gap: 6, padding: '10px 14px', justifyItems: 'center',
+      }}>
         {tools.map(t => (
           <button key={t.id}
             onClick={() => setTool(t.id)}
@@ -181,7 +278,7 @@ export default function Draw({ onClose }: DrawProps) {
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               width: 36, height: 36, borderRadius: 8,
               border: `1.5px solid ${tool === t.id ? C.accent : C.border}`,
-              background: tool === t.id ? '#eff6ff' : C.bg,
+              background: tool === t.id ? '#F0EBE3' : C.bg,
               color: tool === t.id ? C.accent : C.textMuted,
               cursor: 'pointer',
             }}
@@ -215,7 +312,7 @@ export default function Draw({ onClose }: DrawProps) {
             style={{
               width: 26, height: 26, borderRadius: 6,
               background: c, cursor: 'pointer',
-              border: color === c ? '2.5px solid #0f172a' : '2px solid transparent',
+              border: color === c ? `2.5px solid ${C.accent}` : '2px solid transparent',
               transition: 'border-color 0.1s',
             }}
           />
@@ -234,6 +331,6 @@ const btnIcon: React.CSSProperties = {
 const sliderBtn: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
   width: 24, height: 24, borderRadius: 6,
-  border: '1.5px solid #e2e8f0', background: '#ffffff',
-  cursor: 'pointer', fontSize: 14, fontWeight: 700, color: '#64748b',
+  border: `1.5px solid ${C.border}`, background: C.bg,
+  cursor: 'pointer', fontSize: 14, fontWeight: 700, color: C.textMuted,
 }

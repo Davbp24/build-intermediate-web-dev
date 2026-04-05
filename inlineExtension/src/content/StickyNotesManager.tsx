@@ -1,4 +1,12 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  createContext,
+  useContext,
+  type ReactNode,
+} from 'react'
 import StickyNote, { PALETTE } from './StickyNote'
 import {
   generateNoteId,
@@ -10,7 +18,7 @@ const SAVE_DEBOUNCE_MS = 500
 
 /* ─── eye icon ─── */
 const IEye = ({ crossed }: { crossed?: boolean }) => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
     {!crossed ? (
       <>
         <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/>
@@ -23,26 +31,127 @@ const IEye = ({ crossed }: { crossed?: boolean }) => (
 )
 
 const IPlus = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16">
+  <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
     <line x1="8" y1="3" x2="8" y2="13" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
     <line x1="3" y1="8" x2="13" y2="8" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
   </svg>
 )
 
-/* ─── blue palette for new note ─── */
 const NEXT_COLOR = (() => {
   let i = 0
   return () => { const c = PALETTE[i % PALETTE.length].bg; i++; return c }
 })()
 
-export default function StickyNotesManager() {
+type StickyNotesCtx = {
+  notes: StickyNoteData[]
+  notesVisible: boolean
+  setNotesVisible: (v: boolean | ((p: boolean) => boolean)) => void
+  handleAddNote: () => void
+  handleUpdateNote: (id: string, updates: Partial<StickyNoteData>) => void
+  handleDeleteNote: (id: string) => void
+}
+
+const StickyNotesContext = createContext<StickyNotesCtx | null>(null)
+
+/** Notes only — visibility toggled elsewhere; never unmounts the rest of the extension. */
+function StickyNotesLayer() {
+  const ctx = useContext(StickyNotesContext)
+  if (!ctx) return null
+  const { notes, notesVisible, handleUpdateNote, handleDeleteNote } = ctx
+  return (
+    <>
+      {notesVisible && notes.map(note => (
+        <StickyNote key={note.id} note={note} onUpdate={handleUpdateNote} onDelete={handleDeleteNote} />
+      ))}
+    </>
+  )
+}
+
+/**
+ * Launcher is a separate subtree from the note layer so toggling note visibility
+ * cannot affect this UI (eye + add). Matches site typography / colors.
+ */
+function StickyNoteLauncherBar() {
+  const ctx = useContext(StickyNotesContext)
+  const [hovered, setHovered] = useState(false)
+  if (!ctx) return null
+  const { notesVisible, setNotesVisible, handleAddNote } = ctx
+
+  return (
+    <div
+      className="add-note-launcher"
+      data-inline-sticky-launcher=""
+      style={{
+        position: 'fixed',
+        right: 20,
+        bottom: 20,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-end',
+        gap: 10,
+        zIndex: 2147483647,
+        pointerEvents: 'auto',
+        isolation: 'isolate',
+      }}
+      onMouseDown={e => e.stopPropagation()}
+      onClick={e => e.stopPropagation()}
+    >
+      <button
+        type="button"
+        className="launcher-eye"
+        onClick={e => {
+          e.preventDefault()
+          e.stopPropagation()
+          setNotesVisible(v => !v)
+        }}
+        title={notesVisible ? 'Hide sticky notes only' : 'Show sticky notes'}
+      >
+        <IEye crossed={!notesVisible} />
+      </button>
+
+      <button
+        type="button"
+        className="launcher-add"
+        onClick={e => {
+          e.preventDefault()
+          e.stopPropagation()
+          handleAddNote()
+        }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          width: hovered ? 140 : 48,
+          padding: hovered ? '0 14px' : '0',
+        }}
+        title="Add sticky note"
+      >
+        <IPlus />
+        <span
+          className="launcher-add-label"
+          style={{
+            opacity: hovered ? 1 : 0,
+            marginLeft: hovered ? 8 : 0,
+            transform: hovered ? 'translateX(0)' : 'translateX(8px)',
+            transition: 'all 0.2s ease',
+            whiteSpace: 'nowrap',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif',
+            fontSize: 13,
+            fontWeight: 600,
+          }}
+        >
+          Add Note
+        </span>
+      </button>
+    </div>
+  )
+}
+
+function StickyNotesProvider({ children }: { children: ReactNode }) {
   const [notes, setNotes] = useState<StickyNoteData[]>([])
   const [loaded, setLoaded] = useState(false)
-  const [visible, setVisible] = useState(true)
-  const [hovered, setHovered] = useState(false)
+  const [notesVisible, setNotesVisible] = useState(true)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // --- Mark as loaded on mount (retrieval from Supabase will be added later) ---
   useEffect(() => {
     setLoaded(true)
   }, [])
@@ -50,9 +159,7 @@ export default function StickyNotesManager() {
   useEffect(() => {
     if (!loaded) return
 
-    if (saveTimer.current) {
-      clearTimeout(saveTimer.current)
-    }
+    if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
       chrome.runtime.sendMessage(
         {
@@ -70,29 +177,29 @@ export default function StickyNotesManager() {
     }, SAVE_DEBOUNCE_MS)
 
     return () => {
-      if (saveTimer.current) {
-        clearTimeout(saveTimer.current)
-      }
+      if (saveTimer.current) clearTimeout(saveTimer.current)
     }
   }, [notes, loaded])
 
   const handleAddNote = useCallback(() => {
     const now = Date.now()
-    const offset = notes.length * 18
-    setNotes(prev => [...prev, {
-      id: generateNoteId(),
-      pageUrl: PAGE_URL,
-      x: Math.min(window.innerWidth - 260, window.innerWidth / 2 - 120 + offset),
-      y: Math.min(window.innerHeight - 220, window.innerHeight / 2 - 100 + offset),
-      width: 240,
-      height: 190,
-      content: '',
-      color: NEXT_COLOR(),
-      title: 'Note',
-      createdAt: now,
-      updatedAt: now,
-    }])
-  }, [notes.length])
+    setNotes(prev => {
+      const offset = prev.length * 18
+      return [...prev, {
+        id: generateNoteId(),
+        pageUrl: PAGE_URL,
+        x: Math.min(window.innerWidth - 260, window.innerWidth / 2 - 120 + offset),
+        y: Math.min(window.innerHeight - 220, window.innerHeight / 2 - 100 + offset),
+        width: 240,
+        height: 190,
+        content: '',
+        color: NEXT_COLOR(),
+        title: 'Note',
+        createdAt: now,
+        updatedAt: now,
+      }]
+    })
+  }, [])
 
   const handleUpdateNote = useCallback(
     (id: string, updates: Partial<StickyNoteData>) =>
@@ -105,76 +212,27 @@ export default function StickyNotesManager() {
     [],
   )
 
+  const value: StickyNotesCtx = {
+    notes,
+    notesVisible,
+    setNotesVisible,
+    handleAddNote,
+    handleUpdateNote,
+    handleDeleteNote,
+  }
+
   return (
-    <>
-      {visible && notes.map(note => (
-        <StickyNote key={note.id} note={note} onUpdate={handleUpdateNote} onDelete={handleDeleteNote} />
-      ))}
+    <StickyNotesContext.Provider value={value}>
+      {children}
+    </StickyNotesContext.Provider>
+  )
+}
 
-      {/* ── bottom-right launcher ── */}
-      <div
-        className="add-note-launcher"
-        style={{
-          position: 'fixed',
-          right: 20,
-          bottom: 20,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-end',
-          gap: 10,
-          zIndex: 2147483647,
-          pointerEvents: 'auto',
-        }}
-      >
-
-        {/* eye button — always fixed at the bottom, only toggles note visibility */}
-        <button
-          type="button"
-          className="launcher-eye"
-          onClick={() => setVisible(v => !v)}
-          title={visible ? 'Hide notes' : 'Show notes'}
-        >
-          <IEye crossed={!visible} />
-        </button>
-
-        {/* + button — always visible, expands leftward on hover */}
-        <button
-          type="button"
-          className="launcher-add"
-          onClick={handleAddNote}
-          onMouseEnter={() => setHovered(true)}
-          onMouseLeave={() => setHovered(false)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: 48,
-            borderRadius: 999,
-            background: '#6A8EBE',
-            color: 'white',
-            border: 'none',
-            cursor: 'pointer',
-            width: hovered ? 140 : 48,
-            padding: hovered ? '0 14px' : '0',
-          }}
-          title="Add sticky note"
-        >
-          <IPlus />
-          <span
-            style={{
-              opacity: hovered ? 1 : 0,
-              marginLeft: hovered ? 8 : 0,
-              transform: hovered ? 'translateX(0)' : 'translateX(8px)',
-              transition: 'all 0.2s ease',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Add Note
-          </span>
-        </button>
-
-        
-      </div>
-    </>
+export default function StickyNotesManager() {
+  return (
+    <StickyNotesProvider>
+      <StickyNotesLayer />
+      <StickyNoteLauncherBar />
+    </StickyNotesProvider>
   )
 }

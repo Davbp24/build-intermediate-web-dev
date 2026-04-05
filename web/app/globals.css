@@ -50,48 +50,48 @@
   --font-sans: var(--font-geist-sans);
   --radius: 0.625rem;
 
-  /* ── Notion-inspired warm palette ──
-     Primary dark:  #150C00 (rich near-black brown)
+  /* ── Warm cream palette (matches marketing homepage) ──
+     Primary dark:  #1C1E26
      Accent blue:   #4B83C4 (medium-saturation steel blue)
-     Text:          #37352F (Notion warm dark)
-     Muted:         #787774 / #9B9A97
-     Surface:       #F7F6F3  |  Border: #E3E2DE
+     Text:          #1C1E26
+     Muted:         #78716c (stone-500)
+     Surface:       #F5EDE3  |  Border: #d6d3d1 (stone-300)
   */
-  --background:                 #FFFFFF;
-  --foreground:                 #37352F;
+  --background:                 #FDFBF7;
+  --foreground:                 #1C1E26;
   --card:                       #FFFFFF;
-  --card-foreground:            #37352F;
+  --card-foreground:            #1C1E26;
   --popover:                    #FFFFFF;
-  --popover-foreground:         #37352F;
-  --primary:                    #191919;
-  --primary-hover:              #150C00;
+  --popover-foreground:         #1C1E26;
+  --primary:                    #1C1E26;
+  --primary-hover:              #13151B;
   --primary-light:              #F7F6F3;
   --primary-foreground:         #FFFFFF;
-  --secondary:                  #F7F6F3;
-  --secondary-foreground:       #37352F;
-  --muted:                      #F1F1EF;
-  --muted-foreground:           #787774;
-  --accent:                     #F1F1EF;
+  --secondary:                  #F5EDE3;
+  --secondary-foreground:       #1C1E26;
+  --muted:                      #F0EBE3;
+  --muted-foreground:           #78716c;
+  --accent:                     #F0EBE3;
   --accent-light:               #F7F6F3;
-  --accent-foreground:          #37352F;
+  --accent-foreground:          #1C1E26;
   --highlight:                  #FDECC8;
   --destructive:                #EB5757;
   --destructive-foreground:     #FFFFFF;
-  --border:                     #E3E2DE;
-  --input:                      #E3E2DE;
+  --border:                     #d6d3d1;
+  --input:                      #d6d3d1;
   --ring:                       #4B83C4;
   --chart-1:                    #4B83C4;
   --chart-2:                    #0F7B6C;
   --chart-3:                    #9065B0;
   --chart-4:                    #D9730D;
   --chart-5:                    #CB912F;
-  --sidebar:                    #FFFFFF;
-  --sidebar-foreground:         #37352F;
-  --sidebar-primary:            #191919;
+  --sidebar:                    #FDFBF7;
+  --sidebar-foreground:         #1C1E26;
+  --sidebar-primary:            #1C1E26;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent:             #F1F1EF;
-  --sidebar-accent-foreground:  #37352F;
-  --sidebar-border:             #E3E2DE;
+  --sidebar-accent:             #F0EBE3;
+  --sidebar-accent-foreground:  #1C1E26;
+  --sidebar-border:             #d6d3d1;
   --sidebar-ring:               #4B83C4;
   --font-size-base:             14px;
 }

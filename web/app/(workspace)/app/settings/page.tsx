@@ -1,16 +1,15 @@
 'use client'
 
 import { useState, useEffect, useTransition, useRef } from 'react'
-import Link from 'next/link'
 import PageHeader from '@/components/shell/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { signOut } from '@/lib/actions/auth'
 import {
-  User, Paintbrush, Zap, Puzzle, Check, Eye, EyeOff,
+  Check, Eye, EyeOff,
   Play, Loader2, Plus, X, Globe, Shield,
-  FileText, Calendar, Bell, GripVertical, ArrowRight,
+  GripVertical, ArrowRight,
   HelpCircle, LogOut,
 } from 'lucide-react'
 
@@ -19,28 +18,14 @@ import {
 // ---------------------------------------------------------------------------
 type Tab = 'account' | 'appearance' | 'ai-voice' | 'extension' | 'integrations' | 'notifications'
 
-const NAV_GROUPS: { label: string; items: { id: Tab; label: string; icon: React.ElementType }[] }[] = [
-  {
-    label: 'Profile',
-    items: [
-      { id: 'account',      label: 'General',            icon: User     },
-      { id: 'notifications',label: 'Notifications',      icon: Bell     },
-    ],
-  },
-  {
-    label: 'Preferences',
-    items: [
-      { id: 'appearance',   label: 'Themes',             icon: Paintbrush },
-    ],
-  },
-  {
-    label: 'Apps',
-    items: [
-      { id: 'integrations', label: 'Apps & integrations', icon: Puzzle },
-      { id: 'ai-voice',     label: 'AI & Voice',          icon: Zap    },
-      { id: 'extension',    label: 'Extension',           icon: Globe  },
-    ],
-  },
+/** Flat tabs for horizontal nav */
+const PROFILE_TABS: { id: Tab; label: string }[] = [
+  { id: 'account', label: 'General' },
+  { id: 'notifications', label: 'Notifications' },
+  { id: 'appearance', label: 'Themes' },
+  { id: 'integrations', label: 'Apps & integrations' },
+  { id: 'ai-voice', label: 'AI & Voice' },
+  { id: 'extension', label: 'Extension' },
 ]
 
 // ---------------------------------------------------------------------------
@@ -566,6 +551,15 @@ function IntegrationsTab() {
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
+const TAB_DESCRIPTIONS: Partial<Record<Tab, string>> = {
+  account: 'Your profile, connected accounts, and security.',
+  notifications: 'Choose how Inline communicates with you.',
+  appearance: 'Theme and text size for the dashboard.',
+  integrations: 'Connect tools you already use.',
+  'ai-voice': 'API keys, voice, and copilot options.',
+  extension: 'Blocklist and extension preferences.',
+}
+
 export default function PersonalSettingsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('account')
 
@@ -580,68 +574,66 @@ export default function PersonalSettingsPage() {
 
   return (
     <>
-      <PageHeader
-        crumbs={[{ label: 'Settings' }]}
-        title="Personal Settings"
-        subtitle="Manage your account, appearance, and integrations"
-      />
+      <PageHeader crumbs={[{ label: 'Settings' }]} />
 
-      {/* Two-column layout that lives INSIDE the WorkspaceShell */}
-      <div className="flex h-[calc(100vh-112px)] overflow-hidden">
-        {/* Left nav */}
-        <aside className="w-52 shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground flex flex-col overflow-y-auto scrollbar-minimal">
-          <nav className="flex-1 p-3 space-y-5 pt-4">
-            {NAV_GROUPS.map(group => (
-              <div key={group.label}>
-                <p className="px-2 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {group.label}
-                </p>
-                <ul className="space-y-0.5">
-                  {group.items.map(item => {
-                    const Icon = item.icon
-                    const active = activeTab === item.id
-                    return (
-                      <li key={item.id}>
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab(item.id)}
-                          className={cn(
-                            'w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left text-sm transition-all cursor-pointer font-medium',
-                            active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                          )}
-                        >
-                          <Icon className="w-4 h-4 shrink-0 opacity-90" />
-                          <span className="truncate">{item.label}</span>
-                        </button>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </div>
-            ))}
-          </nav>
+      <div className="px-6 pb-12">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground mt-4">
+          Profile Settings
+        </h1>
 
-          {/* Footer */}
-          <div className="p-3 border-t border-sidebar-border space-y-1 shrink-0">
-            <a href="mailto:support@inline.app"
-              className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors cursor-pointer">
-              <HelpCircle className="w-4 h-4" />Support
-            </a>
-            <form action={signOut}>
-              <button type="submit"
-                className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors cursor-pointer">
-                <LogOut className="w-4 h-4" />Log out
+        <nav
+          className="mt-6 flex gap-1 overflow-x-auto scrollbar-minimal border-b border-border -mb-px pb-px"
+          aria-label="Profile settings sections"
+        >
+          {PROFILE_TABS.map(tab => {
+            const active = activeTab === tab.id
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={cn(
+                  'shrink-0 px-3 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors cursor-pointer whitespace-nowrap',
+                  active
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {tab.label}
               </button>
-            </form>
-          </div>
-        </aside>
+            )
+          })}
+        </nav>
 
-        {/* Content */}
-        <main className="flex-1 overflow-y-auto bg-background scrollbar-minimal">
-          <div className="max-w-2xl px-6 py-8 space-y-8">
-            {content[activeTab]}
-          </div>
-        </main>
+        <div className="mt-8 max-w-2xl space-y-2">
+          <h2 className="text-base font-semibold text-foreground">
+            {PROFILE_TABS.find(t => t.id === activeTab)?.label}
+          </h2>
+          {TAB_DESCRIPTIONS[activeTab] && (
+            <p className="text-sm text-muted-foreground">{TAB_DESCRIPTIONS[activeTab]}</p>
+          )}
+        </div>
+
+        <div className="max-w-2xl mt-6 space-y-8">{content[activeTab]}</div>
+
+        <div className="max-w-2xl mt-12 pt-8 border-t border-border flex flex-wrap items-center gap-4">
+          <a
+            href="mailto:support@inline.app"
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          >
+            <HelpCircle className="w-4 h-4" />
+            Support
+          </a>
+          <form action={signOut}>
+            <button
+              type="submit"
+              className="inline-flex items-center gap-2 text-sm font-medium text-destructive hover:underline cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
+              Log out
+            </button>
+          </form>
+        </div>
       </div>
     </>
   )

@@ -80,9 +80,30 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pageUrl, featureKey, data }),
     })
-      .then((res) => res.json())
-      .then((json) => sendResponse({ ok: true, data: json }))
-      .catch((err) => sendResponse({ ok: false, error: err.message }));
+      .then(async (res) => {
+        const text = await res.text()
+        let json: unknown
+        try {
+          json = JSON.parse(text) as unknown
+        } catch {
+          sendResponse({
+            ok: false,
+            error:
+              'Server did not return JSON (check API URL / is the app running?).',
+          })
+          return
+        }
+        if (!res.ok) {
+          const err =
+            typeof json === 'object' && json !== null && 'error' in json
+              ? String((json as { error?: string }).error)
+              : `HTTP ${res.status}`
+          sendResponse({ ok: false, error: err })
+          return
+        }
+        sendResponse({ ok: true, data: json })
+      })
+      .catch((err: Error) => sendResponse({ ok: false, error: err.message }))
 
     return true;
   }

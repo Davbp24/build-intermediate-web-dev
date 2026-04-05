@@ -1,34 +1,20 @@
 import { useState, useRef, useCallback } from 'react'
 import { loadSettings } from '../lib/extensionSettings'
-
-/* ─── Flat Design Tokens ─── */
-const C = {
-  bg: '#ffffff',
-  headerBg: '#f0f9ff',
-  border: '#e2e8f0',
-  shadow: '4px 4px 0px #E2E8F0',
-  text: '#0f172a',
-  textMuted: '#64748b',
-  textLight: '#94a3b8',
-  accent: '#2563eb',
-  accentHover: '#1d4ed8',
-  hoverBg: '#f1f5f9',
-  radius: 12,
-}
+import { PANEL as C, FONT } from '../lib/extensionTheme'
 
 /* ─── Icons ─── */
 const ISparkle = () => (
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="#2563eb">
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="#1C1E26">
     <path d="M7.657 6.247c.11-.33.576-.33.686 0l.645 1.937a2.89 2.89 0 0 0 1.829 1.828l1.936.645c.33.11.33.576 0 .686l-1.937.645a2.89 2.89 0 0 0-1.828 1.829l-.645 1.936a.361.361 0 0 1-.686 0l-.645-1.937a2.89 2.89 0 0 0-1.828-1.828l-1.937-.645a.361.361 0 0 1 0-.686l1.937-.645a2.89 2.89 0 0 0 1.828-1.829l.645-1.936zM3.794 1.148a.217.217 0 0 1 .412 0l.387 1.162c.173.518.61.955 1.128 1.128l1.162.387a.217.217 0 0 1 0 .412l-1.162.387A1.734 1.734 0 0 0 4.593 5.75l-.387 1.162a.217.217 0 0 1-.412 0L3.407 5.75a1.734 1.734 0 0 0-1.127-1.128l-1.163-.387a.217.217 0 0 1 0-.412l1.163-.387a1.734 1.734 0 0 0 1.127-1.128l.387-1.162z"/>
   </svg>
 )
 const IClose = () => (
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="#64748b">
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="#78716c">
     <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
   </svg>
 )
 const ICopy = () => (
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="#64748b">
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="#78716c">
     <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
     <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
   </svg>
@@ -97,7 +83,7 @@ export default function Rewrite({ selectedText, originalRange, onClose }: Rewrit
     return (
       <div style={{
         width: 280, background: C.bg, border: `1.5px solid ${C.border}`,
-        borderRadius: C.radius, boxShadow: C.shadow, fontFamily: 'system-ui, sans-serif',
+        borderRadius: C.radius, boxShadow: C.shadow, fontFamily: FONT,
         overflow: 'hidden', userSelect: 'none',
       }}>
         {/* Header */}
@@ -116,7 +102,7 @@ export default function Rewrite({ selectedText, originalRange, onClose }: Rewrit
         {/* Body */}
         <div style={{ padding: '14px 14px 16px' }}>
           <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: C.text }}>Make any page yours</p>
-          <p style={{ margin: '4px 0 14px', fontSize: 11, color: C.textMuted, lineHeight: 1.4 }}>
+          <p style={{ margin: '4px 0 14px', fontSize: 12, color: C.textMuted, lineHeight: 1.45 }}>
             Use AI tools to speed your workflow.
           </p>
 
@@ -126,8 +112,8 @@ export default function Rewrite({ selectedText, originalRange, onClose }: Rewrit
             {TONES.map(t => (
               <button key={t} onClick={() => setTone(t)} style={{
                 padding: '5px 14px', borderRadius: 999, border: `1.5px solid ${tone === t ? C.accent : C.border}`,
-                background: tone === t ? '#eff6ff' : C.bg, color: tone === t ? C.accent : C.text,
-                fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                background: tone === t ? C.toneSelectedBg : C.bg, color: tone === t ? C.accent : C.text,
+                fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
               }}>{t}</button>
             ))}
           </div>
@@ -140,7 +126,7 @@ export default function Rewrite({ selectedText, originalRange, onClose }: Rewrit
                 display: 'block', width: '100%', textAlign: 'left',
                 padding: '8px 10px', border: 'none', borderRadius: 6,
                 background: 'transparent', fontSize: 13, color: C.text,
-                cursor: 'pointer', fontWeight: 500, marginBottom: 2,
+                cursor: 'pointer', fontWeight: 500, marginBottom: 2, fontFamily: FONT,
               }}
               onMouseEnter={e => (e.currentTarget.style.background = C.hoverBg)}
               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
@@ -159,7 +145,7 @@ export default function Rewrite({ selectedText, originalRange, onClose }: Rewrit
                 width: '100%', boxSizing: 'border-box', padding: '8px 10px',
                 border: `1.5px solid ${C.border}`, borderRadius: 8,
                 fontSize: 12, outline: 'none', color: C.text,
-                fontFamily: 'system-ui, sans-serif',
+                fontFamily: FONT,
               }}
             />
           </div>
@@ -181,7 +167,7 @@ export default function Rewrite({ selectedText, originalRange, onClose }: Rewrit
   return (
     <div style={{
       width: 320, background: C.bg, border: `1.5px solid ${C.border}`,
-      borderRadius: C.radius, boxShadow: C.shadow, fontFamily: 'system-ui, sans-serif',
+      borderRadius: C.radius, boxShadow: C.shadow, fontFamily: FONT,
       overflow: 'hidden', userSelect: 'none',
     }}>
       {/* Header */}
@@ -202,7 +188,7 @@ export default function Rewrite({ selectedText, originalRange, onClose }: Rewrit
         <div style={{
           padding: 12, border: `1.5px solid ${C.border}`, borderRadius: 8,
           fontSize: 13, lineHeight: 1.6, color: C.text, minHeight: 60,
-          background: '#fafafa',
+          background: C.surfaceMuted,
         }}>
           {loading ? (
             <span style={{ color: C.textMuted, fontStyle: 'italic' }}>Generating…</span>
@@ -231,7 +217,7 @@ export default function Rewrite({ selectedText, originalRange, onClose }: Rewrit
             width: '100%', boxSizing: 'border-box', marginTop: 10,
             padding: '8px 10px', border: `1.5px solid ${C.border}`, borderRadius: 8,
             fontSize: 12, outline: 'none', color: C.text,
-            fontFamily: 'system-ui, sans-serif',
+            fontFamily: FONT,
           }}
         />
       </div>
@@ -257,7 +243,7 @@ const btnIcon: React.CSSProperties = {
 
 const pillBtn: React.CSSProperties = {
   padding: '6px 16px', borderRadius: 999,
-  border: '1.5px solid #e2e8f0', background: '#ffffff',
+  border: `1.5px solid ${C.border}`, background: C.bg,
   fontSize: 12, fontWeight: 600, cursor: 'pointer',
-  color: '#0f172a', fontFamily: 'system-ui, sans-serif',
+  color: C.text, fontFamily: FONT,
 }

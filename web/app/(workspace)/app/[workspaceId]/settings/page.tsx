@@ -16,9 +16,9 @@ import {
   type WorkspaceFolder,
 } from '@/lib/workspace-folders'
 import {
-  Palette, Users, Bell, Shield, Trash2,
+  Shield,
   Check, UserPlus, Download, Loader2, AlertTriangle,
-  X, Crown, Pencil, Eye, FolderOpen, ArrowRight, FileText, Folder,
+  X, Crown, Pencil, Eye, FolderOpen, ArrowRight, Folder,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -26,29 +26,15 @@ import {
 // ---------------------------------------------------------------------------
 type Tab = 'identity' | 'library' | 'members' | 'notifications' | 'permissions' | 'data' | 'danger'
 
-const WS_NAV_GROUPS: { label: string; items: { id: Tab; label: string; icon: React.ElementType; danger?: boolean }[] }[] = [
-  {
-    label: 'Workspace',
-    items: [
-      { id: 'identity', label: 'General',              icon: Palette   },
-      { id: 'library',  label: 'Folders & documents', icon: FolderOpen },
-      { id: 'members',  label: 'Members',             icon: Users     },
-    ],
-  },
-  {
-    label: 'Preferences',
-    items: [
-      { id: 'notifications', label: 'Notifications', icon: Bell    },
-      { id: 'permissions',   label: 'Permissions',   icon: Shield  },
-      { id: 'data',          label: 'Data',          icon: Download },
-    ],
-  },
-  {
-    label: 'Danger zone',
-    items: [
-      { id: 'danger', label: 'Delete workspace', icon: Trash2, danger: true },
-    ],
-  },
+/** Flat tab list for horizontal nav (order preserved) */
+const WS_TABS: { id: Tab; label: string; danger?: boolean }[] = [
+  { id: 'identity', label: 'General' },
+  { id: 'library', label: 'Folders & documents' },
+  { id: 'members', label: 'Members' },
+  { id: 'notifications', label: 'Notifications' },
+  { id: 'permissions', label: 'Permissions' },
+  { id: 'data', label: 'Data' },
+  { id: 'danger', label: 'Delete workspace', danger: true },
 ]
 
 const ROLE_META = {
@@ -671,57 +657,65 @@ export default function WorkspaceSettingsPage() {
     danger:        <DangerTab workspaceId={workspaceId} workspaceName={workspaceName} />,
   }
 
+  const tabDescriptions: Partial<Record<Tab, string>> = {
+    identity: 'Workspace name, icon, and color.',
+    library: 'Folders and documents in this workspace.',
+    members: 'Invite people and manage roles.',
+    notifications: 'Email and activity alerts.',
+    permissions: 'Who can capture, export, and manage the workspace.',
+    data: 'Export, import, and storage usage.',
+    danger: 'Archive or permanently delete this workspace.',
+  }
+
   return (
     <>
       <PageHeader
         crumbs={[{ label: workspaceName, href: `/app/${workspaceId}/dashboard` }, { label: 'Settings' }]}
-        title="Workspace Settings"
-        subtitle={`Configure ${workspaceName}`}
       />
 
-      <div className="flex h-[calc(100vh-112px)] overflow-hidden">
-        {/* Left nav */}
-        <aside className="w-52 shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground flex flex-col overflow-y-auto scrollbar-minimal">
-          <nav className="flex-1 p-3 space-y-5 pt-4">
-            {WS_NAV_GROUPS.map(group => (
-              <div key={group.label}>
-                <p className="px-2 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {group.label}
-                </p>
-                <ul className="space-y-0.5">
-                  {group.items.map(item => {
-                    const Icon = item.icon
-                    const active = activeTab === item.id
-                    return (
-                      <li key={item.id}>
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab(item.id)}
-                          className={cn(
-                            'w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left text-sm transition-all cursor-pointer font-medium',
-                            item.danger
-                              ? active ? 'bg-destructive/15 text-destructive' : 'text-destructive/80 hover:bg-destructive/10 hover:text-destructive'
-                              : active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                          )}
-                        >
-                          <Icon className="w-4 h-4 shrink-0 opacity-90" />
-                          <span className="truncate">{item.label}</span>
-                        </button>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </div>
-            ))}
-          </nav>
-        </aside>
+      <div className="px-6 pb-12">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground mt-4">
+          {workspaceName} Settings
+        </h1>
 
-        {/* Content */}
-        <main className="flex-1 overflow-y-auto bg-background scrollbar-minimal">
-          <div className="max-w-2xl px-6 py-8 space-y-8">
-            {TabContent[activeTab]}
-          </div>
-        </main>
+        <nav
+          className="mt-6 flex gap-1 overflow-x-auto scrollbar-minimal border-b border-border -mb-px pb-px"
+          aria-label="Workspace settings sections"
+        >
+          {WS_TABS.map(tab => {
+            const active = activeTab === tab.id
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={cn(
+                  'shrink-0 px-3 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors cursor-pointer whitespace-nowrap',
+                  tab.danger
+                    ? active
+                      ? 'border-destructive text-destructive'
+                      : 'border-transparent text-destructive/80 hover:text-destructive'
+                    : active
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {tab.label}
+              </button>
+            )
+          })}
+        </nav>
+
+        <div className="mt-8 max-w-2xl space-y-2">
+          <h2 className="text-base font-semibold text-foreground">
+            {WS_TABS.find(t => t.id === activeTab)?.label}
+          </h2>
+          {tabDescriptions[activeTab] && (
+            <p className="text-sm text-muted-foreground">{tabDescriptions[activeTab]}</p>
+          )}
+        </div>
+
+        <div className="max-w-2xl mt-6 space-y-8">{TabContent[activeTab]}</div>
       </div>
     </>
   )

@@ -13,11 +13,11 @@ import {
 } from '@/lib/dashboard-favorites'
 import { collaboratorIndexForId } from '@/lib/dashboard-mock-avatars'
 
-const PASTEL_BGS = ['bg-[#EBF1F7]', 'bg-[#FDECC8]', 'bg-[#F1F1EF]', 'bg-[#DBEDDB]']
+const PASTEL_BGS = ['bg-[#F5EDE3]', 'bg-[#FDECC8]', 'bg-[#F1F1EF]', 'bg-[#E7E5E4]']
 
 const MOCK_USERS = [
-  { avatar: 'A', color: '#9065B0' },
-  { avatar: 'K', color: '#4B83C4' },
+  { avatar: 'A', color: '#7c3aed' },
+  { avatar: 'K', color: '#57534e' },
   { avatar: 'M', color: '#D9730D' },
   { avatar: 'S', color: '#0F7B6C' },
   { avatar: 'R', color: '#ec4899' },
@@ -99,12 +99,12 @@ export default function LibraryDocumentsSection({ workspaceId }: { workspaceId: 
 
   if (!docs.length) {
     return (
-      <div className="rounded-2xl border-2 border-dashed border-slate-200 p-8 text-center">
+      <div className="rounded-2xl border-2 border-dashed border-border p-8 text-center">
         <div className="mx-auto w-12 h-12 rounded-xl bg-[#EBF1F7] flex items-center justify-center mb-3">
-          <FileText className="w-6 h-6 text-[#4B83C4]" />
+          <FileText className="h-6 w-6 text-stone-600" />
         </div>
-        <p className="text-sm font-medium text-slate-700">No documents yet</p>
-        <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+        <p className="text-sm font-medium text-foreground">No documents yet</p>
+        <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">
           Create a folder from the sidebar, add a document, and it will appear here automatically.
         </p>
       </div>
@@ -169,7 +169,7 @@ function DocLibraryCard({
   return (
     <div className={cn(
       'relative rounded-2xl p-5 flex flex-col justify-between h-40',
-      'border border-transparent hover:border-slate-200 transition-colors',
+      'border border-transparent transition-colors hover:border-border',
       bg,
     )}>
       <button
@@ -180,7 +180,7 @@ function DocLibraryCard({
           e.stopPropagation()
           onTogglePin()
         }}
-        className="absolute top-3 right-3 z-20 text-slate-300 hover:text-amber-400 transition-colors cursor-pointer"
+        className="absolute right-3 top-3 z-20 cursor-pointer text-muted-foreground/50 transition-colors hover:text-amber-600"
       >
         <Star className={cn('w-4 h-4', pinned && 'fill-amber-400 text-amber-400')} />
       </button>
@@ -195,7 +195,7 @@ function DocLibraryCard({
             if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
           }}
           aria-label="Document name"
-          className="text-base font-semibold text-slate-900 tracking-tight w-full bg-transparent border-0 focus:outline-none focus:ring-0 rounded-none px-0 py-0 pr-6 line-clamp-1 truncate"
+          className="line-clamp-1 w-full truncate rounded-none border-0 bg-transparent px-0 py-0 pr-6 text-base font-semibold tracking-tight text-foreground focus:outline-none focus:ring-0"
         />
         <p className="text-xs text-slate-500 mt-1 line-clamp-2">
           {preview}
@@ -211,13 +211,10 @@ function DocLibraryCard({
               style={{ backgroundColor: user.color, zIndex: avatars.length - i }}
             >
               {user.avatar}
-              {i === 0 && (
-                <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 border border-white" />
-              )}
             </div>
           ))}
         </div>
-        <span className="text-[10px] text-slate-400">{folderName} &middot; {relativeTime(doc.updatedAt)}</span>
+        <span className="text-[10px] text-muted-foreground">{folderName} &middot; {relativeTime(doc.updatedAt)}</span>
       </Link>
     </div>
   )
