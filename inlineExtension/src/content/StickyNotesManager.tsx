@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import StickyNote, { PALETTE } from './StickyNote'
 import {
   generateNoteId,
+  loadNotes,
+  saveNotes,
   type StickyNoteData,
 } from './storage'
 
@@ -42,9 +44,12 @@ export default function StickyNotesManager() {
   const [hovered, setHovered] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // --- Mark as loaded on mount (retrieval from Supabase will be added later) ---
+  // --- Load saved notes from chrome.storage.local on mount ---
   useEffect(() => {
-    setLoaded(true)
+    loadNotes(PAGE_URL).then(saved => {
+      if (saved.length > 0) setNotes(saved)
+      setLoaded(true)
+    })
   }, [])
 
   useEffect(() => {
@@ -54,6 +59,7 @@ export default function StickyNotesManager() {
       clearTimeout(saveTimer.current)
     }
     saveTimer.current = setTimeout(() => {
+      saveNotes(PAGE_URL, notes)
       chrome.runtime.sendMessage(
         {
           type: 'SAVE_ANNOTATIONS',

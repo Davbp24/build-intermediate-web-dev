@@ -55,6 +55,18 @@ export default function Highlighter({ onClose }: HighlighterProps) {
       span.appendChild(contents)
       range.insertNode(span)
     }
+    // Double-click to unhighlight
+    span.style.cursor = 'pointer'
+    span.addEventListener('dblclick', (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      const text = span.textContent ?? ''
+      const parent = span.parentNode
+      if (parent) {
+        parent.replaceChild(document.createTextNode(text), span)
+        parent.normalize()
+      }
+    })
     sel.removeAllRanges()
   }, [])
 

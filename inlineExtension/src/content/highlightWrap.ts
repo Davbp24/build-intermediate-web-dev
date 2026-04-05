@@ -61,9 +61,10 @@ const ACTION_META: Record<string, { bg: string; title: string }> = {
   span.appendChild(contents)
   range.insertNode(span)
   }
-  
+
+  attachUnhighlightListener(span)
   sel.removeAllRanges()
-  
+
     saveHighlight({
       text: text.trim(),
       action,
@@ -75,6 +76,36 @@ const ACTION_META: Record<string, { bg: string; title: string }> = {
   return { text, title: meta.title }
   }
   
+  function removeSavedHighlight(text: string, action: string): void {
+    try {
+      const existing = loadSavedHighlights()
+      const idx = existing.findIndex(h => h.text === text && h.action === action)
+      if (idx !== -1) {
+        existing.splice(idx, 1)
+        localStorage.setItem(highlightStorageKey(), JSON.stringify(existing))
+      }
+    } catch { /* ignore */ }
+  }
+
+  function attachUnhighlightListener(span: HTMLSpanElement): void {
+    span.style.cursor = 'pointer'
+    span.addEventListener('dblclick', (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      const text = span.textContent ?? ''
+      const action = span.getAttribute('data-inline-highlight') ?? ''
+      const parent = span.parentNode
+      if (parent) {
+        // Replace span with its text content
+        const textNode = document.createTextNode(text)
+        parent.replaceChild(textNode, span)
+        // Merge adjacent text nodes
+        parent.normalize()
+      }
+      removeSavedHighlight(text.trim(), action)
+    })
+  }
+
   export function restoreHighlights(): void {
     const saved = loadSavedHighlights()
     if (saved.length === 0) return
@@ -107,8 +138,9 @@ const ACTION_META: Record<string, { bg: string; title: string }> = {
           span.title = h.title
   
           range.surroundContents(span)
+          attachUnhighlightListener(span)
         } catch { /* skip if DOM structure doesn't allow it */ }
-  
+
         break
       }
     }

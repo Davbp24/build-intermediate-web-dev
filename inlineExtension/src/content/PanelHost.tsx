@@ -18,11 +18,19 @@ export default function PanelHost() {
         rangeRef.current = sel.getRangeAt(0).cloneRange()
       }
     }
+    function handleFeature(e: Event) {
+      const detail = (e as CustomEvent).detail as { featureId: string; selectedText: string }
+      if (detail.selectedText) {
+        setSelectedText(detail.selectedText)
+      }
+    }
     document.addEventListener('mouseup', capture)
     document.addEventListener('keyup', capture)
+    document.addEventListener('inline:feature', handleFeature)
     return () => {
       document.removeEventListener('mouseup', capture)
       document.removeEventListener('keyup', capture)
+      document.removeEventListener('inline:feature', handleFeature)
     }
   }, [])
 

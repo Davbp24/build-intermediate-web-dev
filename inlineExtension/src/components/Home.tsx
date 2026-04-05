@@ -1,10 +1,11 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import Rewrite from './Rewrite'
 import AI from './AI'
 import Notes from './Notes'
 import Settings from './Settings'
 import Highlighter from './Highlighter'
 import Draw from './Draw'
+import { wrapSelectionWithHighlight } from '../content/highlightWrap'
 
 type PanelId = 'rewrite' | 'ai' | 'notes' | 'settings' | 'highlighter' | 'draw' | null
 
@@ -75,6 +76,31 @@ export default function Home({ selectedText, originalRange }: HomeProps) {
   }, [])
 
   const closePanel = useCallback(() => setActivePanel(null), [])
+
+  useEffect(() => {
+    function handleFeature(e: Event) {
+      const detail = (e as CustomEvent).detail as { featureId: string; selectedText: string }
+      switch (detail.featureId) {
+        case 'highlight':
+          wrapSelectionWithHighlight('extract')
+          break
+        case 'rewrite':
+          setActivePanel('rewrite')
+          break
+        case 'ai':
+          setActivePanel('ai')
+          break
+        case 'draw':
+          setActivePanel('draw')
+          break
+        case 'notes':
+          setNotesOpen(prev => [...prev, { x: 120 + prev.length * 20, y: 120 + prev.length * 20 }])
+          break
+      }
+    }
+    document.addEventListener('inline:feature', handleFeature)
+    return () => document.removeEventListener('inline:feature', handleFeature)
+  }, [])
 
   /* drag the main bar */
   const onPointerDown = useCallback((e: React.PointerEvent) => {

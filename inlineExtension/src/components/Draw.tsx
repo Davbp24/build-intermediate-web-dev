@@ -53,6 +53,76 @@ const IClose = () => (
   </svg>
 )
 
+/* ─── Drawing persistence ─── */
+interface SavedStroke {
+  d: string
+  stroke: string
+  strokeWidth: string
+  opacity?: string
+}
+
+function drawStorageKey(): string {
+  try {
+    const u = new URL(window.location.href)
+    return `inlineDrawings:${u.origin}${u.pathname}`.replace(/\/$/, '')
+  } catch { return `inlineDrawings:${window.location.href}` }
+}
+
+function loadStrokes(): SavedStroke[] {
+  try {
+    const raw = localStorage.getItem(drawStorageKey())
+    return raw ? JSON.parse(raw) : []
+  } catch { return [] }
+}
+
+function persistStrokes(svg: SVGSVGElement) {
+  const paths = svg.querySelectorAll('[data-inline-draw]')
+  const strokes: SavedStroke[] = []
+  paths.forEach(p => {
+    const s: SavedStroke = {
+      d: p.getAttribute('d') ?? '',
+      stroke: p.getAttribute('stroke') ?? '#000',
+      strokeWidth: p.getAttribute('stroke-width') ?? '3',
+    }
+    const op = p.getAttribute('opacity')
+    if (op) s.opacity = op
+    strokes.push(s)
+  })
+  try { localStorage.setItem(drawStorageKey(), JSON.stringify(strokes)) } catch {}
+}
+
+function renderStroke(svg: SVGSVGElement, s: SavedStroke) {
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+  path.setAttribute('d', s.d)
+  path.setAttribute('stroke', s.stroke)
+  path.setAttribute('stroke-width', s.strokeWidth)
+  path.setAttribute('fill', 'none')
+  path.setAttribute('stroke-linecap', 'round')
+  path.setAttribute('stroke-linejoin', 'round')
+  if (s.opacity) path.setAttribute('opacity', s.opacity)
+  path.setAttribute('data-inline-draw', 'true')
+  svg.appendChild(path)
+}
+
+/* ─── Eraser: check if pointer is near any stroke ─── */
+function eraseAt(x: number, y: number, svg: SVGSVGElement) {
+  const paths = svg.querySelectorAll<SVGPathElement>('[data-inline-draw]')
+  const pt = svg.createSVGPoint()
+  pt.x = x; pt.y = y
+  for (const path of paths) {
+    try {
+      // Use isPointInStroke with a widened stroke for easier erasing
+      const origWidth = path.getAttribute('stroke-width') ?? '3'
+      path.setAttribute('stroke-width', String(Math.max(parseFloat(origWidth), 16)))
+      if (path.isPointInStroke(pt)) {
+        path.remove()
+        return
+      }
+      path.setAttribute('stroke-width', origWidth)
+    } catch { /* skip invalid paths */ }
+  }
+}
+
 interface DrawProps {
   onClose: () => void
 }
@@ -63,10 +133,11 @@ export default function Draw({ onClose }: DrawProps) {
   const [thickness, setThickness] = useState(3)
   const canvasRef = useRef<SVGSVGElement | null>(null)
   const drawing = useRef(false)
+  const erasing = useRef(false)
   const pathData = useRef('')
   const currentPath = useRef<SVGPathElement | null>(null)
 
-  /* ─── Create/remove SVG overlay on mount ─── */
+  /* ─── Create/remove SVG overlay on mount + restore saved strokes ─── */
   useEffect(() => {
     const existing = document.getElementById('inline-draw-canvas')
     if (existing) {
@@ -79,13 +150,18 @@ export default function Draw({ onClose }: DrawProps) {
       'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:2147483640;pointer-events:none;'
     document.body.appendChild(svg)
     canvasRef.current = svg
+
+    // Restore saved strokes
+    const saved = loadStrokes()
+    for (const s of saved) renderStroke(svg, s)
+
     return () => { svg.remove(); canvasRef.current = null }
   }, [])
 
   const activateCanvas = useCallback(() => {
     if (!canvasRef.current) return
-    canvasRef.current.style.pointerEvents = tool === 'eraser' ? 'auto' : 'auto'
-  }, [tool])
+    canvasRef.current.style.pointerEvents = 'auto'
+  }, [])
 
   const deactivateCanvas = useCallback(() => {
     if (!canvasRef.current) return
@@ -100,7 +176,11 @@ export default function Draw({ onClose }: DrawProps) {
     const svgEl: SVGSVGElement = canvasRef.current
 
     function start(e: PointerEvent) {
-      if (tool === 'eraser') return
+      if (tool === 'eraser') {
+        erasing.current = true
+        eraseAt(e.clientX, e.clientY, svgEl)
+        return
+      }
       drawing.current = true
       pathData.current = `M${e.clientX} ${e.clientY}`
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
@@ -117,31 +197,34 @@ export default function Draw({ onClose }: DrawProps) {
     }
 
     function move(e: PointerEvent) {
+      if (erasing.current && tool === 'eraser') {
+        eraseAt(e.clientX, e.clientY, svgEl)
+        return
+      }
       if (!drawing.current || !currentPath.current) return
       pathData.current += ` L${e.clientX} ${e.clientY}`
       currentPath.current.setAttribute('d', pathData.current)
     }
 
     function end() {
-      drawing.current = false
-      currentPath.current = null
-    }
-
-    function erase(e: PointerEvent) {
-      if (tool !== 'eraser') return
-      const el = document.elementFromPoint(e.clientX, e.clientY)
-      if (el && el.hasAttribute('data-inline-draw')) el.remove()
+      if (drawing.current) {
+        drawing.current = false
+        currentPath.current = null
+        persistStrokes(svgEl)
+      }
+      if (erasing.current) {
+        erasing.current = false
+        persistStrokes(svgEl)
+      }
     }
 
     svgEl.addEventListener('pointerdown', start)
     svgEl.addEventListener('pointermove', move)
     svgEl.addEventListener('pointerup', end)
-    svgEl.addEventListener('click', erase)
     return () => {
       svgEl.removeEventListener('pointerdown', start)
       svgEl.removeEventListener('pointermove', move)
       svgEl.removeEventListener('pointerup', end)
-      svgEl.removeEventListener('click', erase)
     }
   }, [tool, color, thickness])
 
@@ -168,7 +251,15 @@ export default function Draw({ onClose }: DrawProps) {
           <IDraw />
           <span style={{ fontSize: 12, fontWeight: 700, color: C.accent }}>Draw</span>
         </div>
-        <button onClick={onClose} style={btnIcon}><IClose /></button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <button onClick={() => {
+            const svg = canvasRef.current
+            if (!svg) return
+            svg.querySelectorAll('[data-inline-draw]').forEach(p => p.remove())
+            persistStrokes(svg)
+          }} title="Clear all" style={{ ...btnIcon, fontSize: 11, color: C.textMuted, width: 'auto', padding: '0 4px' }}>Clear</button>
+          <button onClick={onClose} style={btnIcon}><IClose /></button>
+        </div>
       </div>
 
       {/* Tool row */}

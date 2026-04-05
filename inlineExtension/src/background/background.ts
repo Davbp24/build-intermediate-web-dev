@@ -48,12 +48,34 @@ chrome.runtime.onInstalled.addListener(() => {
       title: '✨ Ask AI',
       contexts: ['selection'],
     })
+
+    chrome.contextMenus.create({
+      id: 'draw',
+      parentId: 'inline-root',
+      title: '🎨 Draw',
+      contexts: ['selection'],
+    })
+
+    chrome.contextMenus.create({
+      id: 'inline-draw',
+      title: 'Draw on page (Inline)',
+      contexts: ['page'],
+    })
   })
 })
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === 'inline-analyze-risk' && tab?.id != null) {
     chrome.tabs.sendMessage(tab.id, { type: 'INLINE_PAGE_RISK' }).catch(() => {})
+    return
+  }
+
+  if (info.menuItemId === 'inline-draw' && tab?.id != null) {
+    chrome.tabs.sendMessage(tab.id, {
+      type: 'INLINE_FEATURE',
+      featureId: 'draw',
+      selectedText: '',
+    }).catch(() => {})
     return
   }
 

@@ -14,6 +14,36 @@ import cssText from './content.css?inline'
 
 setTimeout(restoreHighlights, 800)
 
+/* ─── Restore saved drawings on page load ─── */
+setTimeout(() => {
+  if (document.getElementById('inline-draw-canvas')) return
+  try {
+    const u = new URL(window.location.href)
+    const key = `inlineDrawings:${u.origin}${u.pathname}`.replace(/\/$/, '')
+    const raw = localStorage.getItem(key)
+    if (!raw) return
+    const strokes = JSON.parse(raw) as { d: string; stroke: string; strokeWidth: string; opacity?: string }[]
+    if (!strokes.length) return
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    svg.id = 'inline-draw-canvas'
+    svg.style.cssText =
+      'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:2147483640;pointer-events:none;'
+    document.body.appendChild(svg)
+    for (const s of strokes) {
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+      path.setAttribute('d', s.d)
+      path.setAttribute('stroke', s.stroke)
+      path.setAttribute('stroke-width', s.strokeWidth)
+      path.setAttribute('fill', 'none')
+      path.setAttribute('stroke-linecap', 'round')
+      path.setAttribute('stroke-linejoin', 'round')
+      if (s.opacity) path.setAttribute('opacity', s.opacity)
+      path.setAttribute('data-inline-draw', 'true')
+      svg.appendChild(path)
+    }
+  } catch { /* ignore */ }
+}, 500)
+
 const HOST_ID = 'inline-extension-root'
 if (!document.getElementById(HOST_ID)) {
   const host = document.createElement('div')
@@ -62,5 +92,13 @@ if (!document.getElementById(HOST_ID)) {
 chrome.runtime.onMessage.addListener((message) => {
   if (message.action === 'addNote') {
     document.dispatchEvent(new CustomEvent('inline:addNote'))
+  }
+  if (message.type === 'INLINE_FEATURE') {
+    document.dispatchEvent(new CustomEvent('inline:feature', {
+      detail: {
+        featureId: message.featureId,
+        selectedText: message.selectedText ?? '',
+      },
+    }))
   }
 })
