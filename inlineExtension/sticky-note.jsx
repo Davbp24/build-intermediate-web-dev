@@ -59,5 +59,23 @@ export default function StickyNote() {
         </div>
       </div>
     </div>
-  )
+  );
+
+  function CopyIcon(){
+    return (
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke="1.4" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="4.5" y="4.5" width="7" height="7" rx="1" />
+        <path d="M1.5 8.5V2a.5.5 0 0 1 .5-.5h6" />
+      </svg>
+    );
+  
+    function TrashIcon() {
+      return (
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M2 3.5h9M5 3.5V2.5h3v1M4.5 3.5l.5 7h3l/5-7" />
+        </svg>
+      );
+    }
+    
+  }
 }
