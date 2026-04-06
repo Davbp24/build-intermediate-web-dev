@@ -4,6 +4,7 @@
  */
 
 const BACKEND_URL = 'http://localhost:3000';
+const WEB_URL = 'http://localhost:3001';
 
 // ─── Context Menus ──────────────────────────────────────────────────────────
 
@@ -104,6 +105,38 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     })
       .then((res) => res.json())
       .then((json) => sendResponse({ ok: true, data: json }))
+      .catch((err) => sendResponse({ ok: false, error: err.message }));
+
+    return true;
+  }
+
+  if (message.type === 'LOAD_ANNOTATIONS') {
+    const { pageUrl } = message.payload;
+
+    fetch(`${BACKEND_URL}/api/annotations?pageUrl=${encodeURIComponent(pageUrl)}`)
+      .then((res) => res.json())
+      .then((json) => sendResponse({ ok: true, elements: json.elements ?? {} }))
+      .catch((err) => sendResponse({ ok: false, error: err.message }));
+
+    return true;
+  }
+
+  if (message.type === 'AI_TASK') {
+    const { task, text, maxLen } = message.payload;
+
+    fetch(`${WEB_URL}/api/ai/extension-light`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task, text, maxLen }),
+    })
+      .then(async (res) => {
+        const json = await res.json();
+        if (!res.ok) {
+          sendResponse({ ok: false, error: json.error ?? 'Server error' });
+        } else {
+          sendResponse({ ok: true, result: json.result ?? null });
+        }
+      })
       .catch((err) => sendResponse({ ok: false, error: err.message }));
 
     return true;

@@ -1,3 +1,4 @@
+import type React from 'react'
 import { useState, useRef, useEffect, useCallback } from 'react'
 
 const C = {
@@ -54,25 +55,18 @@ const IClose = () => (
 )
 
 /* ─── Drawing persistence ─── */
-interface SavedStroke {
+export interface SavedStroke {
   d: string
   stroke: string
   strokeWidth: string
   opacity?: string
 }
 
-function drawStorageKey(): string {
+function normalizePageUrl(): string {
   try {
     const u = new URL(window.location.href)
-    return `inlineDrawings:${u.origin}${u.pathname}`.replace(/\/$/, '')
-  } catch { return `inlineDrawings:${window.location.href}` }
-}
-
-function loadStrokes(): SavedStroke[] {
-  try {
-    const raw = localStorage.getItem(drawStorageKey())
-    return raw ? JSON.parse(raw) : []
-  } catch { return [] }
+    return `${u.origin}${u.pathname}`.replace(/\/$/, '')
+  } catch { return window.location.href }
 }
 
 function persistStrokes(svg: SVGSVGElement) {
@@ -88,20 +82,11 @@ function persistStrokes(svg: SVGSVGElement) {
     if (op) s.opacity = op
     strokes.push(s)
   })
-  try { localStorage.setItem(drawStorageKey(), JSON.stringify(strokes)) } catch {}
-}
 
-function renderStroke(svg: SVGSVGElement, s: SavedStroke) {
-  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
-  path.setAttribute('d', s.d)
-  path.setAttribute('stroke', s.stroke)
-  path.setAttribute('stroke-width', s.strokeWidth)
-  path.setAttribute('fill', 'none')
-  path.setAttribute('stroke-linecap', 'round')
-  path.setAttribute('stroke-linejoin', 'round')
-  if (s.opacity) path.setAttribute('opacity', s.opacity)
-  path.setAttribute('data-inline-draw', 'true')
-  svg.appendChild(path)
+  chrome.runtime.sendMessage({
+    type: 'SAVE_ANNOTATIONS',
+    payload: { pageUrl: normalizePageUrl(), featureKey: 'drawings', data: strokes },
+  }, () => { if (chrome.runtime.lastError) console.error('[Inline] Draw save failed:', chrome.runtime.lastError.message) })
 }
 
 /* ─── Eraser: check if pointer is near any stroke ─── */
@@ -137,11 +122,11 @@ export default function Draw({ onClose }: DrawProps) {
   const pathData = useRef('')
   const currentPath = useRef<SVGPathElement | null>(null)
 
-  /* ─── Create/remove SVG overlay on mount + restore saved strokes ─── */
+  /* ─── Create/reuse SVG overlay on mount; keep it alive after close ─── */
   useEffect(() => {
-    const existing = document.getElementById('inline-draw-canvas')
+    const existing = document.getElementById('inline-draw-canvas') as SVGSVGElement | null
     if (existing) {
-      canvasRef.current = existing as unknown as SVGSVGElement
+      canvasRef.current = existing
       return
     }
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
@@ -150,12 +135,6 @@ export default function Draw({ onClose }: DrawProps) {
       'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:2147483640;pointer-events:none;'
     document.body.appendChild(svg)
     canvasRef.current = svg
-
-    // Restore saved strokes
-    const saved = loadStrokes()
-    for (const s of saved) renderStroke(svg, s)
-
-    return () => { svg.remove(); canvasRef.current = null }
   }, [])
 
   const activateCanvas = useCallback(() => {

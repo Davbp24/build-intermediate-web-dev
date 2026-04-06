@@ -1,3 +1,4 @@
+import type React from 'react'
 import { useState, useRef, useCallback, useEffect } from 'react'
 
 /* ─── Flat Design Tokens ─── */
@@ -34,17 +35,26 @@ const HEADING_MAP: Record<HeadingLevel, { tag: string; size: number; weight: num
   Heading: { tag: 'h2', size: 18, weight: 700 },
 }
 
-interface NotesProps {
-  onClose: () => void
-  initialX?: number
-  initialY?: number
+export interface NoteData {
+  id: string
+  x: number
+  y: number
+  w: number
+  h: number
+  content: string
 }
 
-export default function Notes({ onClose, initialX = 100, initialY = 100 }: NotesProps) {
+interface NotesProps {
+  note: NoteData
+  onUpdate: (patch: Partial<NoteData>) => void
+  onClose: () => void
+}
+
+export default function Notes({ note, onUpdate, onClose }: NotesProps) {
   const [headingLevel, setHeadingLevel] = useState<HeadingLevel>('Normal')
   const [showHeadingMenu, setShowHeadingMenu] = useState(false)
-  const [pos, setPos] = useState({ x: initialX, y: initialY })
-  const [size, setSize] = useState({ w: 320, h: 260 })
+  const [pos, setPos] = useState({ x: note.x, y: note.y })
+  const [size, setSize] = useState({ w: note.w, h: note.h })
   const bodyRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{ ox: number; oy: number } | null>(null)
 
@@ -64,20 +74,28 @@ export default function Notes({ onClose, initialX = 100, initialY = 100 }: Notes
     setPos({ x: e.clientX - dragRef.current.ox, y: e.clientY - dragRef.current.oy })
   }, [])
 
-  const onPointerUp = useCallback(() => { dragRef.current = null }, [])
+  const onPointerUp = useCallback(() => {
+    dragRef.current = null
+    onUpdate({ x: pos.x, y: pos.y })
+  }, [pos, onUpdate])
 
   /* ─── Resize ─── */
   const onResizeDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation()
     const sx = e.clientX, sy = e.clientY, sw = size.w, sh = size.h
-    const move = (ev: MouseEvent) => setSize({
-      w: Math.max(240, sw + ev.clientX - sx),
-      h: Math.max(180, sh + ev.clientY - sy),
-    })
-    const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up) }
+    const move = (ev: MouseEvent) => {
+      const nw = Math.max(240, sw + ev.clientX - sx)
+      const nh = Math.max(180, sh + ev.clientY - sy)
+      setSize({ w: nw, h: nh })
+    }
+    const up = () => {
+      window.removeEventListener('mousemove', move)
+      window.removeEventListener('mouseup', up)
+      setSize(s => { onUpdate({ w: s.w, h: s.h }); return s })
+    }
     window.addEventListener('mousemove', move)
     window.addEventListener('mouseup', up)
-  }, [size])
+  }, [size, onUpdate])
 
   /* ─── Formatting commands ─── */
   function fmt(cmd: string) {
@@ -94,7 +112,18 @@ export default function Notes({ onClose, initialX = 100, initialY = 100 }: Notes
     else document.execCommand('formatBlock', false, 'div')
   }
 
-  useEffect(() => { bodyRef.current?.focus() }, [])
+  useEffect(() => {
+    if (bodyRef.current) {
+      bodyRef.current.innerHTML = note.content
+      bodyRef.current.focus()
+    }
+  // only set innerHTML on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleInput = useCallback(() => {
+    onUpdate({ content: bodyRef.current?.innerHTML ?? '' })
+  }, [onUpdate])
 
   return (
     <div style={{
@@ -195,6 +224,7 @@ export default function Notes({ onClose, initialX = 100, initialY = 100 }: Notes
         ref={bodyRef}
         contentEditable
         suppressContentEditableWarning
+        onInput={handleInput}
         data-placeholder="Start typing…"
         style={{
           flex: 1, padding: '10px 14px', fontSize: 13, lineHeight: 1.65,

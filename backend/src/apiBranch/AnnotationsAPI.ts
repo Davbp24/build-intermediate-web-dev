@@ -61,3 +61,31 @@ export async function saveAnnotations(req: Request, res: Response): Promise<void
 
   res.status(200).json({ success: true });
 }
+
+/**
+ * Retrieve all saved annotations for a given page URL.
+ * Returns the full elements blob keyed by feature.
+ *
+ * Query param: pageUrl
+ */
+export async function loadAnnotations(req: Request, res: Response): Promise<void> {
+  const pageUrl = req.query.pageUrl as string;
+
+  if (!pageUrl) {
+    res.status(400).json({ error: 'pageUrl query param is required' });
+    return;
+  }
+
+  const fetchResult = await (supabase
+    .from('annotations')
+    .select('elements')
+    .eq('page_url', pageUrl)
+    .maybeSingle() as unknown as Promise<{ data: ElementsRow; error: SupabaseError }>);
+
+  if (fetchResult.error) {
+    res.status(500).json({ error: fetchResult.error.message });
+    return;
+  }
+
+  res.status(200).json({ elements: fetchResult.data?.elements ?? {} });
+}

@@ -118,7 +118,7 @@ button:hover { background: #3d6fa8; }
 <p class="section-label">Connection</p>
 
 <label>API base URL</label>
-<input type="text" id="apiBase" placeholder="http://localhost:3000" />
+<input type="text" id="apiBase" placeholder="http://localhost:3001" />
 
 <label>Access token <span class="hint">(optional &mdash; paste your Supabase access token)</span></label>
 <input type="password" id="token" placeholder="Paste token here" />
@@ -128,22 +128,9 @@ button:hover { background: #3d6fa8; }
 <p class="saved" id="savedMsg">Settings saved</p>
 
 <div class="footer">
-  <a href="http://localhost:3000" target="_blank">Open Inline Dashboard &rarr;</a>
+  <a href="http://localhost:3001" target="_blank">Open Inline Dashboard &rarr;</a>
 </div>
 
-<script>
-const $ = id => document.getElementById(id)
-chrome.storage.local.get(['inlineApiBase', 'inlineAccessToken'], r => {
-  $('apiBase').value = r.inlineApiBase || 'http://localhost:3000'
-  $('token').value   = r.inlineAccessToken || ''
-})
-$('save').addEventListener('click', () => {
-  const base = ($('apiBase').value || 'http://localhost:3000').replace(/\/$/, '')
-  chrome.storage.local.set({ inlineApiBase: base, inlineAccessToken: $('token').value }, () => {
-    $('savedMsg').style.display = 'block'
-    setTimeout(() => { $('savedMsg').style.display = 'none' }, 2000)
-  })
-})
-</script>
+<script src="popup.js"></script>
 </body>
 </html>

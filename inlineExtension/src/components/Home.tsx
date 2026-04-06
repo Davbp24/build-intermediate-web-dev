@@ -1,13 +1,24 @@
+import type React from 'react'
 import { useState, useCallback, useRef, useEffect } from 'react'
 import Rewrite from './Rewrite'
 import AI from './AI'
-import Notes from './Notes'
+import Notes, { type NoteData } from './Notes'
 import Settings from './Settings'
 import Highlighter from './Highlighter'
 import Draw from './Draw'
 import { wrapSelectionWithHighlight } from '../content/highlightWrap'
+import type { RestoredNote } from '../lib/annotationRestore'
 
 type PanelId = 'rewrite' | 'ai' | 'notes' | 'settings' | 'highlighter' | 'draw' | null
+
+function normalizePageUrl(): string {
+  try {
+    const u = new URL(window.location.href)
+    return `${u.origin}${u.pathname}`.replace(/\/$/, '')
+  } catch { return window.location.href }
+}
+
+const SAVE_DEBOUNCE = 600
 
 const C = {
   bg: '#ffffff',
@@ -64,18 +75,75 @@ interface HomeProps {
 export default function Home({ selectedText, originalRange }: HomeProps) {
   const [activePanel, setActivePanel] = useState<PanelId>(null)
   const [pos, setPos] = useState({ x: 40, y: 40 })
-  const [notesOpen, setNotesOpen] = useState<{ x: number; y: number }[]>([])
+  const [notes, setNotes] = useState<NoteData[]>([])
+  const notesLoaded = useRef(false)
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dragRef = useRef<{ ox: number; oy: number } | null>(null)
 
-  const toggle = useCallback((id: PanelId) => {
-    if (id === 'notes') {
-      setNotesOpen(prev => [...prev, { x: 120 + prev.length * 20, y: 120 + prev.length * 20 }])
-      return
+  useEffect(() => {
+    function onRestore(e: Event) {
+      const detail = (e as CustomEvent<RestoredNote[]>).detail
+      if (Array.isArray(detail) && detail.length) {
+        setNotes(detail as NoteData[])
+      }
+      notesLoaded.current = true
     }
-    setActivePanel(p => p === id ? null : id)
+    document.addEventListener('inline:restoreNotes', onRestore)
+    notesLoaded.current = true
+    return () => document.removeEventListener('inline:restoreNotes', onRestore)
   }, [])
 
+  const persistNotes = useCallback((data: NoteData[]) => {
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => {
+      chrome.runtime.sendMessage({
+        type: 'SAVE_ANNOTATIONS',
+        payload: { pageUrl: normalizePageUrl(), featureKey: 'stickyNotes', data },
+      })
+    }, SAVE_DEBOUNCE)
+  }, [])
+
+  const addNote = useCallback(() => {
+    const offset = notes.length * 18
+    const n: NoteData = {
+      id: crypto.randomUUID(),
+      x: Math.min(window.innerWidth - 360, 120 + offset),
+      y: Math.min(window.innerHeight - 300, 120 + offset),
+      w: 320, h: 260, content: '',
+    }
+    const next = [...notes, n]
+    setNotes(next)
+    persistNotes(next)
+  }, [notes, persistNotes])
+
+  const updateNote = useCallback((id: string, patch: Partial<NoteData>) => {
+    setNotes(prev => {
+      const next = prev.map(n => n.id === id ? { ...n, ...patch } : n)
+      persistNotes(next)
+      return next
+    })
+  }, [persistNotes])
+
+  const removeNote = useCallback((id: string) => {
+    setNotes(prev => {
+      const next = prev.filter(n => n.id !== id)
+      persistNotes(next)
+      return next
+    })
+  }, [persistNotes])
+
+  const toggle = useCallback((id: PanelId) => {
+    if (id === 'notes') { addNote(); return }
+    setActivePanel(p => p === id ? null : id)
+  }, [addNote])
+
   const closePanel = useCallback(() => setActivePanel(null), [])
+
+  useEffect(() => {
+    const handleAddNote = () => addNote()
+    document.addEventListener('inline:addNote', handleAddNote)
+    return () => document.removeEventListener('inline:addNote', handleAddNote)
+  }, [addNote])
 
   useEffect(() => {
     function handleFeature(e: Event) {
@@ -94,13 +162,13 @@ export default function Home({ selectedText, originalRange }: HomeProps) {
           setActivePanel('draw')
           break
         case 'notes':
-          setNotesOpen(prev => [...prev, { x: 120 + prev.length * 20, y: 120 + prev.length * 20 }])
+          addNote()
           break
       }
     }
     document.addEventListener('inline:feature', handleFeature)
     return () => document.removeEventListener('inline:feature', handleFeature)
-  }, [])
+  }, [addNote])
 
   /* drag the main bar */
   const onPointerDown = useCallback((e: React.PointerEvent) => {
@@ -186,12 +254,12 @@ export default function Home({ selectedText, originalRange }: HomeProps) {
       </div>
 
       {/* ─── Independent Notes panels ─── */}
-      {notesOpen.map((n, i) => (
+      {notes.map(n => (
         <Notes
-          key={i}
-          initialX={n.x}
-          initialY={n.y}
-          onClose={() => setNotesOpen(prev => prev.filter((_, idx) => idx !== i))}
+          key={n.id}
+          note={n}
+          onUpdate={(patch) => updateNote(n.id, patch)}
+          onClose={() => removeNote(n.id)}
         />
       ))}
     </>

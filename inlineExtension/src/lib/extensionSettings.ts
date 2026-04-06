@@ -3,7 +3,7 @@ export type ExtensionSettings = {
   accessToken: string
 }
 
-const DEFAULT_BASE = 'http://localhost:3000'
+const DEFAULT_BASE = 'http://localhost:3001'
 
 export async function loadSettings(): Promise<ExtensionSettings> {
   return new Promise(resolve => {

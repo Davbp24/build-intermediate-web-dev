@@ -6,45 +6,53 @@ const ACTION_META: Record<string, { bg: string; title: string }> = {
   risk:      { bg: 'rgba(254,202,202,0.92)', title: 'Risk-flagged via Inline' },
   }
   
-  interface SavedHighlight {
+  export interface SavedHighlight {
     text: string
     action: string
     bg: string
     title: string
     timestamp: number
   }
-  
-  function highlightStorageKey(): string {
+
+  let highlightCache: SavedHighlight[] = []
+
+  function normalizePageUrl(): string {
     try {
       const u = new URL(window.location.href)
-      return `inlineHighlights:${u.origin}${u.pathname}`.replace(/\/$/, '')
-    } catch {
-      return `inlineHighlights:${window.location.href}`
-    }
+      return `${u.origin}${u.pathname}`.replace(/\/$/, '')
+    } catch { return window.location.href }
   }
-  
-  function loadSavedHighlights(): SavedHighlight[] {
-    try {
-      const raw = localStorage.getItem(highlightStorageKey())
-      return raw ? JSON.parse(raw) : []
-    } catch { return [] }
+
+  export function setHighlightCache(highlights: SavedHighlight[]): void {
+    highlightCache = highlights
   }
-  
+
+  function syncHighlightsToBackend(): void {
+    chrome.runtime.sendMessage({
+      type: 'SAVE_ANNOTATIONS',
+      payload: { pageUrl: normalizePageUrl(), featureKey: 'highlights', data: highlightCache },
+    }, () => { if (chrome.runtime.lastError) console.error('[Inline] Highlight save failed:', chrome.runtime.lastError.message) })
+  }
+
   function saveHighlight(highlight: SavedHighlight): void {
-    try {
-      const existing = loadSavedHighlights()
-      existing.push(highlight)
-      localStorage.setItem(highlightStorageKey(), JSON.stringify(existing))
-    } catch { /* ignore in sandboxed contexts */ }
+    highlightCache.push(highlight)
+    syncHighlightsToBackend()
   }
   
-  export function wrapSelectionWithHighlight(action: string): { text: string; title: string } | null {
+  export function wrapSelectionWithHighlight(action: string, savedRange?: Range): { text: string; title: string; span: HTMLSpanElement } | null {
+  let range: Range
+  let text: string
+
+  if (savedRange) {
+  range = savedRange
+  text = range.toString()
+  } else {
   const sel = window.getSelection()
   if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null
-  const text = sel.toString()
+  text = sel.toString()
+  range = sel.getRangeAt(0)
+  }
   if (!text.trim()) return null
-  
-  const range = sel.getRangeAt(0)
   const meta = ACTION_META[action] ?? { bg: 'rgba(226,232,240,0.95)', title: 'Highlighted by Inline' }
   
   const span = document.createElement('span')
@@ -63,7 +71,8 @@ const ACTION_META: Record<string, { bg: string; title: string }> = {
   }
 
   attachUnhighlightListener(span)
-  sel.removeAllRanges()
+  const sel = window.getSelection()
+  sel?.removeAllRanges()
 
     saveHighlight({
       text: text.trim(),
@@ -73,18 +82,15 @@ const ACTION_META: Record<string, { bg: string; title: string }> = {
       timestamp: Date.now(),
     })
   
-  return { text, title: meta.title }
+  return { text, title: meta.title, span }
   }
   
   function removeSavedHighlight(text: string, action: string): void {
-    try {
-      const existing = loadSavedHighlights()
-      const idx = existing.findIndex(h => h.text === text && h.action === action)
-      if (idx !== -1) {
-        existing.splice(idx, 1)
-        localStorage.setItem(highlightStorageKey(), JSON.stringify(existing))
-      }
-    } catch { /* ignore */ }
+    const idx = highlightCache.findIndex(h => h.text === text && h.action === action)
+    if (idx !== -1) {
+      highlightCache.splice(idx, 1)
+      syncHighlightsToBackend()
+    }
   }
 
   function attachUnhighlightListener(span: HTMLSpanElement): void {
@@ -106,14 +112,15 @@ const ACTION_META: Record<string, { bg: string; title: string }> = {
     })
   }
 
-  export function restoreHighlights(): void {
-    const saved = loadSavedHighlights()
-    if (saved.length === 0) return
+  export function restoreHighlights(saved?: SavedHighlight[]): void {
+    const items = saved ?? highlightCache
+    if (items.length === 0) return
+    if (saved) highlightCache = [...saved]
   
     const body = document.body
     if (!body) return
   
-    for (const h of saved) {
+    for (const h of items) {
       if (!h.text || h.text.length < 3) continue
   
       const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT)

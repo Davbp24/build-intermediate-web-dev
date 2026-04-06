@@ -1,3 +1,4 @@
+import type React from 'react'
 import {
   useCallback,
   useEffect,
@@ -13,9 +14,31 @@ import {
   type Pt = { x: number; y: number }
   type AnchorNote = { id: string; x: number; y: number; text: string }
   type SubPanel = 'rewrite' | 'insight' | null
+
+  function normalizePageUrl(): string {
+    try {
+      const u = new URL(window.location.href)
+      return `${u.origin}${u.pathname}`.replace(/\/$/, '')
+    } catch { return window.location.href }
+  }
+
+  function saveRewriteToBackend(original: string, replacement: string): void {
+    const pageUrl = normalizePageUrl()
+    chrome.runtime.sendMessage(
+      { type: 'LOAD_ANNOTATIONS', payload: { pageUrl } },
+      (response) => {
+        const existing = (response?.ok ? response.elements?.rewrites : []) ?? []
+        const rewrites = [...(existing as { original: string; replacement: string }[]), { original, replacement }]
+        chrome.runtime.sendMessage({
+          type: 'SAVE_ANNOTATIONS',
+          payload: { pageUrl, featureKey: 'rewrites', data: rewrites },
+        })
+      },
+    )
+  }
   
   /* ─── window.ai ─── */
-  async function tryWindowAi(task: string, text: string): Promise<string | null> {
+  async function tryWindowAi(task: string, text: string, maxLen: number): Promise<string | null> {
   const w = window as unknown as {
   ai?: { languageModel?: { create?: () => Promise<{ prompt: (s: string) => Promise<string> }> } }
   }
@@ -23,25 +46,37 @@ import {
   const create = w.ai?.languageModel?.create
   if (!create) return null
   const session = await create.call(w.ai!.languageModel!)
+  const lengthHint = `Your response MUST be ${maxLen} characters or fewer.`
   const prompt =
-  task === 'summarize' ? `Summarize in 3 short bullets:\n\n${text}` :
-  task === 'shorten'   ? `Shorten by ~40%, keep meaning:\n\n${text}` :
-  `Rewrite clearly, same meaning:\n\n${text}`
-  return await session.prompt(prompt.slice(0, 8000))
+  task === 'summarize' ? `Summarize concisely. ${lengthHint}\n\n${text}` :
+  task === 'shorten'   ? `Shorten by ~40%, keep meaning. ${lengthHint}\n\n${text}` :
+  `Rewrite clearly, same meaning. ${lengthHint}\n\n${text}`
+  const result = await session.prompt(prompt.slice(0, 8000))
+  return result?.slice(0, maxLen) ?? null
   } catch { return null }
   }
   
+  let lastAiError = ''
+
   async function serverTask(
-  apiBase: string, token: string, task: string, text: string, instruction?: string,
+  task: string, text: string, maxLen: number,
   ): Promise<string | null> {
-  const h: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (token) h.Authorization = `Bearer ${token}`
-  const res = await fetch(`${apiBase}/api/ai/extension-light`, {
-  method: 'POST', headers: h,
-  body: JSON.stringify({ task, text, instruction }),
+  return new Promise(resolve => {
+  chrome.runtime.sendMessage(
+    { type: 'AI_TASK', payload: { task, text, maxLen } },
+    (response) => {
+      if (chrome.runtime.lastError) {
+        lastAiError = chrome.runtime.lastError.message ?? 'Extension error'
+        resolve(null)
+      } else if (!response?.ok) {
+        lastAiError = response?.error ?? 'Server error'
+        resolve(null)
+      } else {
+        resolve(response.result ?? null)
+      }
+    },
+  )
   })
-  if (!res.ok) return null
-  return ((await res.json()) as { result?: string }).result ?? null
   }
   
   /* ─── SVG icons ─── */
@@ -149,9 +184,15 @@ import {
   const [anchors, setAnchors] = useState<AnchorNote[]>([])
   const dragRef = useRef<{ id: string; ox: number; oy: number } | null>(null)
   const selRef = useRef('')
+  const savedRangeRef = useRef<Range | null>(null)
   const subInputRef = useRef<HTMLInputElement>(null)
   
+  const subPanelRef = useRef<SubPanel>(null)
+  subPanelRef.current = subPanel
+
   const refreshSelection = useCallback(() => {
+  if (subPanelRef.current) return
+
   const sel = window.getSelection()
   if (!sel || sel.isCollapsed || !sel.toString().trim()) {
   setToolbar(null); setSubPanel(null); selRef.current = ''; return
@@ -186,21 +227,87 @@ import {
   }, [subPanel])
   
   function toggleSub(panel: SubPanel) {
+  const opening = subPanel !== panel
   setSubPanel(p => p === panel ? null : panel)
   setSubInput('')
+  if (opening) {
+    const sel = window.getSelection()
+    if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+      savedRangeRef.current = sel.getRangeAt(0).cloneRange()
+    }
+  } else {
+    savedRangeRef.current = null
+  }
   }
   
-  async function runAiTask(task: 'summarize' | 'rewrite' | 'shorten', instruction?: string) {
+  function runManualRewrite(replacementText: string) {
+  if (!replacementText.trim()) return
+  const wrapped = wrapSelectionWithHighlight('rewrite', savedRangeRef.current ?? undefined)
+  if (!wrapped) return
+  savedRangeRef.current = null
+  setToolbar(null); setSubPanel(null)
+
+  const { span, text: originalText } = wrapped
+  span.textContent = replacementText
+  span.title = 'Rewritten via Inline — double-click to revert'
+  span.style.outline = '2px solid rgba(75,131,196,0.4)'
+  span.style.outlineOffset = '1px'
+  setTimeout(() => { span.style.outline = ''; span.style.outlineOffset = '' }, 2000)
+
+  saveRewriteToBackend(originalText, replacementText)
+
+  const revertHandler = (e: Event) => {
+    e.preventDefault()
+    e.stopPropagation()
+    span.textContent = originalText
+    span.title = wrapped.title
+    span.removeEventListener('dblclick', revertHandler)
+  }
+  span.addEventListener('dblclick', revertHandler)
+  }
+
+  async function runAiTask(task: 'summarize' | 'rewrite' | 'shorten') {
   const wrapped = wrapSelectionWithHighlight(task)
   if (!wrapped) return
   setToolbar(null); setSubPanel(null)
-  let out = await tryWindowAi(task, wrapped.text)
+
+  const { span, text: originalText } = wrapped
+  const maxLen = originalText.length
+
+  span.style.opacity = '0.6'
+  span.style.animation = 'inline-pulse 1.2s ease-in-out infinite'
+  span.title = 'Processing…'
+
+  let out = await tryWindowAi(task, originalText, maxLen)
   if (!out) {
-  const { apiBaseUrl, accessToken } = await loadSettings()
-  out = await serverTask(apiBaseUrl, accessToken, task, wrapped.text, instruction)
+  out = await serverTask(task, originalText, maxLen)
   }
-  if (out) window.alert(out)
-  else window.alert('AI unavailable — set API URL + token in the popup.')
+  if (out) out = out.slice(0, maxLen)
+
+  span.style.opacity = '1'
+  span.style.animation = ''
+
+  if (out) {
+  span.textContent = out
+  span.title = `${wrapped.title} — double-click to revert`
+  span.style.outline = '2px solid rgba(75,131,196,0.4)'
+  span.style.outlineOffset = '1px'
+  setTimeout(() => { span.style.outline = ''; span.style.outlineOffset = '' }, 2000)
+
+  saveRewriteToBackend(originalText, out)
+
+  const revertHandler = (e: Event) => {
+    e.preventDefault()
+    e.stopPropagation()
+    span.textContent = originalText
+    span.title = wrapped.title
+    span.removeEventListener('dblclick', revertHandler)
+  }
+  span.addEventListener('dblclick', revertHandler)
+  } else {
+  span.title = wrapped.title
+  window.alert(lastAiError || 'AI request failed.')
+  }
   }
   
   function runPageRisk() {
@@ -329,17 +436,17 @@ import {
   ref={subInputRef}
   value={subInput}
   onChange={e => setSubInput(e.target.value)}
-  onKeyDown={e => { if (e.key === 'Enter') void runAiTask('rewrite', subInput) }}
-  placeholder="Rewrite instruction… (e.g. 'make it formal')"
+  onKeyDown={e => { if (e.key === 'Enter') runManualRewrite(subInput) }}
+  placeholder="Type replacement text…"
   style={{
   flex: 1, padding: '6px 10px', border: '1.5px solid #e2e8f0',
   borderRadius: 8, fontSize: 11, fontFamily: 'system-ui,sans-serif',
   outline: 'none', color: '#334155',
   }}
   />
-  <button type="button" onClick={() => void runAiTask('rewrite', subInput)}
+  <button type="button" onClick={() => runManualRewrite(subInput)}
   style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: ACCENT, color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-  Go
+  Replace
   </button>
   <button type="button" onClick={() => setSubPanel(null)}
   style={{ padding: '4px 8px', borderRadius: 6, border: 'none', background: 'transparent', color: '#94a3b8', fontSize: 14, cursor: 'pointer' }}>×</button>

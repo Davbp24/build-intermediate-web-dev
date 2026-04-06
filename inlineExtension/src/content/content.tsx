@@ -6,43 +6,21 @@
  * StickyNotesManager, and the floating panel toolbar (Home) inside it.
  */
 import { createRoot } from 'react-dom/client'
-import StickyNotesManager from './StickyNotesManager'
 import SmartOverlay from './SmartOverlay'
 import PanelHost from './PanelHost'
-import { restoreHighlights } from './highlightWrap'
+import { restoreAllAnnotations } from '../lib/annotationRestore'
 import cssText from './content.css?inline'
 
-setTimeout(restoreHighlights, 800)
+/* ─── Inject pulse keyframe for AI processing feedback (into real DOM) ─── */
+if (!document.getElementById('inline-keyframes')) {
+  const kf = document.createElement('style')
+  kf.id = 'inline-keyframes'
+  kf.textContent = `@keyframes inline-pulse { 0%,100%{opacity:.6} 50%{opacity:.3} }`
+  document.head.appendChild(kf)
+}
 
-/* ─── Restore saved drawings on page load ─── */
-setTimeout(() => {
-  if (document.getElementById('inline-draw-canvas')) return
-  try {
-    const u = new URL(window.location.href)
-    const key = `inlineDrawings:${u.origin}${u.pathname}`.replace(/\/$/, '')
-    const raw = localStorage.getItem(key)
-    if (!raw) return
-    const strokes = JSON.parse(raw) as { d: string; stroke: string; strokeWidth: string; opacity?: string }[]
-    if (!strokes.length) return
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-    svg.id = 'inline-draw-canvas'
-    svg.style.cssText =
-      'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:2147483640;pointer-events:none;'
-    document.body.appendChild(svg)
-    for (const s of strokes) {
-      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
-      path.setAttribute('d', s.d)
-      path.setAttribute('stroke', s.stroke)
-      path.setAttribute('stroke-width', s.strokeWidth)
-      path.setAttribute('fill', 'none')
-      path.setAttribute('stroke-linecap', 'round')
-      path.setAttribute('stroke-linejoin', 'round')
-      if (s.opacity) path.setAttribute('opacity', s.opacity)
-      path.setAttribute('data-inline-draw', 'true')
-      svg.appendChild(path)
-    }
-  } catch { /* ignore */ }
-}, 500)
+/* ─── Restore all saved annotations from Supabase via background proxy ─── */
+restoreAllAnnotations()
 
 const HOST_ID = 'inline-extension-root'
 if (!document.getElementById(HOST_ID)) {
@@ -83,7 +61,6 @@ if (!document.getElementById(HOST_ID)) {
   root.render(
     <>
       <SmartOverlay />
-      <StickyNotesManager />
       <PanelHost />
     </>,
   )
