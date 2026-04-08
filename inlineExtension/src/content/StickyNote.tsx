@@ -1,5 +1,6 @@
 import { useRef, useCallback, useEffect, useState } from 'react'
 import type { StickyNoteData } from './storage'
+import { formatTime, seekMedia } from '../lib/mediaDetect'
 
 /* ─── pastel palette ─── */
 export const PALETTE = [
@@ -190,6 +191,27 @@ export default function StickyNote({ note, onUpdate, onDelete }: StickyNoteProps
               {note.title ?? 'Note'}
             </span>
         }
+
+        {note.mediaTimestamp != null && (
+          <button
+            type="button"
+            onMouseDown={e => { e.preventDefault(); e.stopPropagation(); seekMedia(note.mediaTimestamp!) }}
+            title={`Jump to ${formatTime(note.mediaTimestamp)}`}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 3,
+              padding: '2px 8px', border: 'none', borderRadius: 10,
+              background: 'rgba(99,102,241,0.15)', color: '#4f46e5',
+              fontSize: 10, fontWeight: 700, cursor: 'pointer',
+              fontFamily: 'system-ui,sans-serif', lineHeight: 1,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <svg width="8" height="8" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M6.271 5.055a.5.5 0 0 1 .52.038l3.5 2.5a.5.5 0 0 1 0 .814l-3.5 2.5A.5.5 0 0 1 6 10.5v-5a.5.5 0 0 1 .271-.445z"/>
+            </svg>
+            {formatTime(note.mediaTimestamp)}
+          </button>
+        )}
 
         {/* palette toggle */}
         <button

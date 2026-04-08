@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react'
 import { wrapSelectionWithHighlight } from '../content/highlightWrap'
 import { loadSettings } from '../lib/extensionSettings'
 import { PANEL as C, FONT } from '../lib/extensionTheme'
+import { PROMPT_TEMPLATES } from '../lib/promptTemplates'
 
 const ISparkle = () => (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="#1C1E26">
@@ -13,18 +14,29 @@ const IClose = () => (
     <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
   </svg>
 )
+const ICopy = () => (
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="#78716c">
+    <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
+    <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
+  </svg>
+)
 
 interface AIProps {
   selectedText: string
+  originalRange: Range | null
   onClose: () => void
 }
 
-export default function AI({ selectedText, onClose }: AIProps) {
+export default function AI({ selectedText, originalRange, onClose }: AIProps) {
   const [customPrompt, setCustomPrompt] = useState('')
+  const [result, setResult] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const runTask = useCallback(async (task: string, instruction?: string) => {
     wrapSelectionWithHighlight(task)
+    setLoading(true)
+    setResult(null)
     try {
       const text = selectedText.slice(0, 8000)
       const { apiBaseUrl, accessToken } = await loadSettings()
@@ -36,68 +48,152 @@ export default function AI({ selectedText, onClose }: AIProps) {
       })
       if (res.ok) {
         const j = await res.json() as { result?: string }
-        if (j.result) window.alert(j.result)
-        else window.alert('No result returned.')
+        setResult(j.result ?? 'No result returned.')
       } else {
-        window.alert('AI request failed. Check settings.')
+        setResult('AI request failed. Check settings.')
       }
     } catch {
-      window.alert('Could not reach AI server.')
+      setResult('Could not reach AI server.')
+    } finally {
+      setLoading(false)
     }
-    onClose()
-  }, [selectedText, onClose])
+  }, [selectedText])
 
+  function handleInsert() {
+    if (!result || !originalRange) return
+    try {
+      originalRange.deleteContents()
+      originalRange.insertNode(document.createTextNode(result))
+    } catch { /* range may be invalid if user navigated away */ }
+    onClose()
+  }
+
+  function handleCopy() {
+    if (result) navigator.clipboard.writeText(result)
+  }
+
+  /* ─── Input form (before result) ─── */
+  if (!result && !loading) {
+    return (
+      <div style={{
+        width: 204, background: C.bg, border: `1px solid ${C.border}`,
+        borderRadius: C.radius, boxShadow: C.shadow, fontFamily: FONT,
+        overflow: 'hidden', userSelect: 'none',
+      }}>
+        {/* Header */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '10px 14px', background: C.headerBg,
+          borderBottom: `1px solid ${C.divider}`,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <ISparkle />
+            <span style={{ fontSize: 13, fontWeight: 500, color: C.accent, letterSpacing: '-0.02em' }}>Ask AI</span>
+          </div>
+          <button type="button" onClick={onClose} style={btnIcon}><IClose /></button>
+        </div>
+
+        {/* Actions */}
+        <div style={{ padding: '12px 12px 8px' }}>
+          {(['Rephrase', 'Shorten', 'Summarize'] as const).map(a => (
+            <button key={a} type="button"
+              onClick={() => void runTask(a.toLowerCase())}
+              style={{
+                display: 'block', width: '100%', textAlign: 'left',
+                padding: '11px 14px', border: 'none', borderRadius: C.radiusPill,
+                background: 'transparent', fontSize: 13, color: C.text,
+                cursor: 'pointer', fontWeight: 500, fontFamily: FONT,
+                marginBottom: 6,
+                transition: 'background 0.18s ease',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = C.hoverBg)}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >{a}</button>
+          ))}
+        </div>
+
+        {/* Template chips */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '8px 12px' }}>
+          {PROMPT_TEMPLATES.map(t => (
+            <button key={t.id} type="button"
+              onClick={() => void runTask('rewrite', t.prompt)}
+              style={{
+                padding: '6px 12px', borderRadius: C.radiusPill,
+                border: `1px solid ${C.border}`, background: C.surfaceBubble,
+                fontSize: 11, fontWeight: 500, cursor: 'pointer',
+                color: C.text, fontFamily: FONT,
+                transition: 'background 0.15s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = C.hoverBg)}
+              onMouseLeave={e => (e.currentTarget.style.background = C.surfaceBubble)}
+            >{t.label}</button>
+          ))}
+        </div>
+
+        {/* Custom prompt */}
+        <div style={{ padding: '4px 14px 16px' }}>
+          <input
+            ref={inputRef}
+            value={customPrompt}
+            onChange={e => setCustomPrompt(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && customPrompt.trim()) void runTask('rewrite', customPrompt) }}
+            placeholder="Custom prompt"
+            style={{
+              width: '100%', boxSizing: 'border-box', padding: '11px 16px',
+              border: `1px solid ${C.border}`, borderRadius: C.radiusPill,
+              fontSize: 13, outline: 'none', color: C.text,
+              fontFamily: FONT, background: C.inputBg, boxShadow: C.shadowSoft,
+            }}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  /* ─── Result / Loading state ─── */
   return (
     <div style={{
-      width: 220, background: C.bg, border: `1.5px solid ${C.border}`,
+      width: 288, background: C.bg, border: `1px solid ${C.border}`,
       borderRadius: C.radius, boxShadow: C.shadow, fontFamily: FONT,
       overflow: 'hidden', userSelect: 'none',
     }}>
       {/* Header */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '8px 12px', background: C.headerBg,
-        borderBottom: `1.5px solid ${C.border}`,
+        padding: '10px 14px', background: C.headerBg,
+        borderBottom: `1px solid ${C.divider}`,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <ISparkle />
-          <span style={{ fontSize: 12, fontWeight: 700, color: C.accent }}>Ask AI</span>
+          <span style={{ fontSize: 13, fontWeight: 500, color: C.accent, letterSpacing: '-0.02em' }}>Ask AI</span>
         </div>
-        <button onClick={onClose} style={btnIcon}><IClose /></button>
+        <button type="button" onClick={onClose} style={btnIcon}><IClose /></button>
       </div>
 
-      {/* Actions */}
-      <div style={{ padding: '6px 6px 4px' }}>
-        {(['Rephrase', 'Shorten', 'Summarize'] as const).map(a => (
-          <button key={a}
-            onClick={() => void runTask(a.toLowerCase())}
-            style={{
-              display: 'block', width: '100%', textAlign: 'left',
-              padding: '7px 10px', border: 'none', borderRadius: 6,
-              background: 'transparent', fontSize: 13, color: C.text,
-              cursor: 'pointer', fontWeight: 500, fontFamily: FONT,
-            }}
-            onMouseEnter={e => (e.currentTarget.style.background = C.hoverBg)}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-          >{a}</button>
-        ))}
-      </div>
+      {/* Result body */}
+      <div style={{ padding: 18 }}>
+        <div style={{
+          padding: 16, border: `1px solid ${C.border}`, borderRadius: C.radiusMd,
+          fontSize: 13, lineHeight: 1.65, color: C.text, minHeight: 72,
+          background: C.surfaceBubble, boxShadow: C.shadowSoft,
+          maxHeight: 260, overflowY: 'auto',
+        }}>
+          {loading ? (
+            <span style={{ color: C.textMuted, fontStyle: 'italic' }}>Generating…</span>
+          ) : result}
+        </div>
 
-      {/* Custom prompt */}
-      <div style={{ padding: '0 10px 10px' }}>
-        <input
-          ref={inputRef}
-          value={customPrompt}
-          onChange={e => setCustomPrompt(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && customPrompt.trim()) void runTask('rewrite', customPrompt) }}
-          placeholder="Custom prompt"
-          style={{
-            width: '100%', boxSizing: 'border-box', padding: '7px 10px',
-            border: `1.5px solid ${C.border}`, borderRadius: 8,
-            fontSize: 12, outline: 'none', color: C.text,
-            fontFamily: FONT,
-          }}
-        />
+        {/* Action row */}
+        {!loading && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14, alignItems: 'center' }}>
+            <button type="button" onClick={() => setResult(null)} style={pillBtn}>Back</button>
+            <button type="button" onClick={handleInsert} style={{
+              ...pillBtn, background: C.accent, color: '#fff', borderColor: C.accent, fontWeight: 600,
+              boxShadow: C.shadowSoft,
+            }}>Insert</button>
+            <button type="button" onClick={handleCopy} style={{ ...btnIcon, marginLeft: 'auto' }}><ICopy /></button>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -105,6 +201,15 @@ export default function AI({ selectedText, onClose }: AIProps) {
 
 const btnIcon: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-  width: 26, height: 26, border: 'none', borderRadius: 6,
-  background: 'transparent', cursor: 'pointer', padding: 0,
+  width: 32, height: 32, border: 'none', borderRadius: C.radiusSm,
+  background: 'rgba(255,255,255,0.35)', cursor: 'pointer', padding: 0,
+}
+
+const pillBtn: React.CSSProperties = {
+  padding: '8px 18px', borderRadius: C.radiusPill,
+  border: `1px solid ${C.border}`, background: C.surfaceBubble,
+  fontSize: 12, fontWeight: 500, cursor: 'pointer',
+  color: C.text, fontFamily: FONT,
+  boxShadow: C.shadowSoft,
+  transition: 'transform 0.15s ease, background 0.15s',
 }

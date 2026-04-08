@@ -35,7 +35,7 @@ export default function Highlighter({ onClose }: HighlighterProps) {
     const span = document.createElement('span')
     span.setAttribute('data-inline-highlight', 'color')
     span.style.backgroundColor = color
-    span.style.borderRadius = '3px'
+    span.style.borderRadius = '6px'
     span.style.padding = '0 2px'
     span.title = 'Highlighted by Inline'
     try {
@@ -50,37 +50,39 @@ export default function Highlighter({ onClose }: HighlighterProps) {
 
   return (
     <div style={{
-      width: 200, background: C.bg, border: `1.5px solid ${C.border}`,
+      width: 180, background: C.bg, border: `1px solid ${C.border}`,
       borderRadius: C.radius, boxShadow: C.shadow, fontFamily: FONT,
       overflow: 'hidden', userSelect: 'none',
     }}>
       {/* Header */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '8px 12px', background: C.headerBg,
-        borderBottom: `1.5px solid ${C.border}`,
+        padding: '10px 14px', background: C.headerBg,
+        borderBottom: `1px solid ${C.divider}`,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <IHighlight />
-          <span style={{ fontSize: 12, fontWeight: 700, color: C.accent }}>Highlighter</span>
+          <span style={{ fontSize: 13, fontWeight: 500, color: C.accent, letterSpacing: '-0.02em' }}>Highlighter</span>
         </div>
-        <button onClick={onClose} style={btnIcon}><IClose /></button>
+        <button type="button" onClick={onClose} style={btnIcon}><IClose /></button>
       </div>
 
       {/* Color grid */}
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)',
-        gap: 8, padding: 14,
+        gap: 12, padding: '18px 16px 20px',
       }}>
         {SWATCHES.map(color => (
           <button
-            key={color}
+            key={color} type="button"
             onClick={() => applyHighlight(color)}
             style={{
-              width: 28, height: 28, borderRadius: 6,
+              width: 32, height: 32, borderRadius: 12,
               background: color, cursor: 'pointer',
-              border: active === color ? `2.5px solid ${C.accent}` : '2px solid transparent',
-              transition: 'border-color 0.1s',
+              border: active === color ? `3px solid ${C.accent}` : '2px solid rgba(255,255,255,0.9)',
+              boxShadow: active === color ? C.shadowSoft : 'none',
+              transition: 'transform 0.15s ease, box-shadow 0.15s',
+              transform: active === color ? 'scale(1.08)' : 'scale(1)',
             }}
           />
         ))}
@@ -91,6 +93,6 @@ export default function Highlighter({ onClose }: HighlighterProps) {
 
 const btnIcon: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-  width: 24, height: 24, border: 'none', borderRadius: 6,
-  background: 'transparent', cursor: 'pointer', padding: 0,
+  width: 32, height: 32, border: 'none', borderRadius: C.radiusSm,
+  background: 'rgba(255,255,255,0.35)', cursor: 'pointer', padding: 0,
 }

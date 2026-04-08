@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { loadSettings } from '../lib/extensionSettings'
 import { PANEL as C, FONT } from '../lib/extensionTheme'
+import { PROMPT_TEMPLATES } from '../lib/promptTemplates'
 
 /* ─── Icons ─── */
 const ISparkle = () => (
@@ -29,12 +30,37 @@ interface RewriteProps {
   onClose: () => void
 }
 
+function computeWordDiff(oldText: string, newText: string) {
+  const oldWords = oldText.split(/(\s+)/)
+  const newWords = newText.split(/(\s+)/)
+
+  let prefixLen = 0
+  while (prefixLen < oldWords.length && prefixLen < newWords.length && oldWords[prefixLen] === newWords[prefixLen]) prefixLen++
+
+  let oldSuffix = oldWords.length - 1
+  let newSuffix = newWords.length - 1
+  while (oldSuffix >= prefixLen && newSuffix >= prefixLen && oldWords[oldSuffix] === newWords[newSuffix]) { oldSuffix--; newSuffix-- }
+
+  const parts: { type: 'same' | 'del' | 'add'; text: string }[] = []
+  if (prefixLen > 0) parts.push({ type: 'same', text: oldWords.slice(0, prefixLen).join('') })
+  const deleted = oldWords.slice(prefixLen, oldSuffix + 1).join('')
+  const added = newWords.slice(prefixLen, newSuffix + 1).join('')
+  if (deleted) parts.push({ type: 'del', text: deleted })
+  if (added) parts.push({ type: 'add', text: added })
+  const suffixStart = oldSuffix + 1
+  if (suffixStart < oldWords.length) parts.push({ type: 'same', text: oldWords.slice(suffixStart).join('') })
+  return parts
+}
+
 export default function Rewrite({ selectedText, originalRange, onClose }: RewriteProps) {
   const [tone, setTone] = useState<Tone>('Casual')
   const [result, setResult] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [customPrompt, setCustomPrompt] = useState('')
+  const [showDiff, setShowDiff] = useState(false)
+  const [inserted, setInserted] = useState(false)
   const customRef = useRef<HTMLInputElement>(null)
+  const originalContentRef = useRef<string | null>(null)
 
   const runTask = useCallback(async (task: string, instruction?: string) => {
     setLoading(true)
@@ -64,10 +90,38 @@ export default function Rewrite({ selectedText, originalRange, onClose }: Rewrit
   function handleInsert() {
     if (!result || !originalRange) return
     try {
+      originalContentRef.current = originalRange.toString()
       originalRange.deleteContents()
-      originalRange.insertNode(document.createTextNode(result))
+
+      const blockquote = document.createElement('blockquote')
+      blockquote.setAttribute('data-inline-citation', 'true')
+      blockquote.style.cssText =
+        'border-left:4px solid #1C1E26;padding:8px 16px;margin:8px 0;' +
+        'background:rgba(253,251,247,0.95);border-radius:0 8px 8px 0;' +
+        'font-style:normal;line-height:1.6;'
+
+      blockquote.appendChild(document.createTextNode(result))
+
+      const attr = document.createElement('span')
+      attr.className = 'inline-cite-attr'
+      attr.style.cssText =
+        'display:block;font-size:10px;color:#78716c;margin-top:6px;font-style:italic;'
+      attr.textContent = `via Inline · ${new Date().toLocaleString()}`
+      blockquote.appendChild(attr)
+
+      originalRange.insertNode(blockquote)
+      setInserted(true)
     } catch { /* range may be invalid if user navigated away */ }
-    onClose()
+  }
+
+  function handleUndo() {
+    if (!originalContentRef.current || !originalRange) return
+    try {
+      originalRange.deleteContents()
+      originalRange.insertNode(document.createTextNode(originalContentRef.current))
+      originalContentRef.current = null
+      setInserted(false)
+    } catch { /* range may be invalid */ }
   }
 
   function handleCopy() {
@@ -82,7 +136,7 @@ export default function Rewrite({ selectedText, originalRange, onClose }: Rewrit
   if (!result && !loading) {
     return (
       <div style={{
-        width: 280, background: C.bg, border: `1.5px solid ${C.border}`,
+        width: 252, background: C.bg, border: `1px solid ${C.border}`,
         borderRadius: C.radius, boxShadow: C.shadow, fontFamily: FONT,
         overflow: 'hidden', userSelect: 'none',
       }}>
@@ -90,51 +144,74 @@ export default function Rewrite({ selectedText, originalRange, onClose }: Rewrit
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '10px 14px', background: C.headerBg,
-          borderBottom: `1.5px solid ${C.border}`,
+          borderBottom: `1px solid ${C.divider}`,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <ISparkle />
-            <span style={{ fontSize: 13, fontWeight: 700, color: C.accent }}>Rewrite</span>
+            <span style={{ fontSize: 13, fontWeight: 500, color: C.accent, letterSpacing: '-0.02em' }}>Rewrite</span>
           </div>
-          <button onClick={onClose} style={btnIcon}><IClose /></button>
+          <button type="button" onClick={onClose} style={btnIcon}><IClose /></button>
         </div>
 
         {/* Body */}
-        <div style={{ padding: '14px 14px 16px' }}>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: C.text }}>Make any page yours</p>
-          <p style={{ margin: '4px 0 14px', fontSize: 12, color: C.textMuted, lineHeight: 1.45 }}>
+        <div style={{ padding: '18px 18px 20px' }}>
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 500, color: C.text, letterSpacing: '-0.02em' }}>Make any page yours</p>
+          <p style={{ margin: '8px 0 18px', fontSize: 13, color: C.textMuted, lineHeight: 1.5 }}>
             Use AI tools to speed your workflow.
           </p>
 
           {/* Tone selector */}
-          <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: C.text }}>Tone</p>
-          <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+          <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 500, color: C.text }}>Tone</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 18 }}>
             {TONES.map(t => (
-              <button key={t} onClick={() => setTone(t)} style={{
-                padding: '5px 14px', borderRadius: 999, border: `1.5px solid ${tone === t ? C.accent : C.border}`,
-                background: tone === t ? C.toneSelectedBg : C.bg, color: tone === t ? C.accent : C.text,
-                fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
+              <button key={t} type="button" onClick={() => setTone(t)} style={{
+                padding: '8px 16px', borderRadius: C.radiusPill,
+                border: `1.5px solid ${tone === t ? C.accent : C.border}`,
+                background: tone === t ? C.toneSelectedBg : C.surfaceBubble,
+                color: tone === t ? C.accent : C.text,
+                fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: FONT,
+                boxShadow: tone === t ? C.shadowSoft : 'none',
+                transition: 'background 0.15s, box-shadow 0.15s, border-color 0.15s',
               }}>{t}</button>
             ))}
           </div>
 
           {/* Actions */}
           {(['Rephrase', 'Shorten', 'Summarize'] as const).map(a => (
-            <button key={a}
+            <button key={a} type="button"
               onClick={() => runTask(a.toLowerCase(), `Tone: ${tone}`)}
               style={{
                 display: 'block', width: '100%', textAlign: 'left',
-                padding: '8px 10px', border: 'none', borderRadius: 6,
+                padding: '11px 14px', border: 'none', borderRadius: C.radiusPill,
                 background: 'transparent', fontSize: 13, color: C.text,
-                cursor: 'pointer', fontWeight: 500, marginBottom: 2, fontFamily: FONT,
+                cursor: 'pointer', fontWeight: 500, marginBottom: 6, fontFamily: FONT,
+                transition: 'background 0.18s ease',
               }}
               onMouseEnter={e => (e.currentTarget.style.background = C.hoverBg)}
               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             >{a}</button>
           ))}
 
+          {/* Template chips */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '8px 0' }}>
+            {PROMPT_TEMPLATES.map(t => (
+              <button key={t.id} type="button"
+                onClick={() => runTask('rewrite', t.prompt)}
+                style={{
+                  padding: '6px 12px', borderRadius: C.radiusPill,
+                  border: `1px solid ${C.border}`, background: C.surfaceBubble,
+                  fontSize: 11, fontWeight: 500, cursor: 'pointer',
+                  color: C.text, fontFamily: FONT,
+                  transition: 'background 0.15s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = C.hoverBg)}
+                onMouseLeave={e => (e.currentTarget.style.background = C.surfaceBubble)}
+              >{t.label}</button>
+            ))}
+          </div>
+
           {/* Custom prompt */}
-          <div style={{ marginTop: 10, position: 'relative' }}>
+          <div style={{ marginTop: 14, position: 'relative' }}>
             <input
               ref={customRef}
               value={customPrompt}
@@ -142,10 +219,12 @@ export default function Rewrite({ selectedText, originalRange, onClose }: Rewrit
               onKeyDown={e => { if (e.key === 'Enter' && customPrompt.trim()) runTask('rewrite', customPrompt) }}
               placeholder="Custom prompt"
               style={{
-                width: '100%', boxSizing: 'border-box', padding: '8px 10px',
-                border: `1.5px solid ${C.border}`, borderRadius: 8,
-                fontSize: 12, outline: 'none', color: C.text,
-                fontFamily: FONT,
+                width: '100%', boxSizing: 'border-box', padding: '11px 16px',
+                border: `1px solid ${C.border}`, borderRadius: C.radiusPill,
+                fontSize: 13, outline: 'none', color: C.text,
+                fontFamily: FONT, background: C.inputBg,
+                boxShadow: C.shadowSoft,
+                transition: 'border-color 0.15s',
               }}
             />
           </div>
@@ -153,11 +232,12 @@ export default function Rewrite({ selectedText, originalRange, onClose }: Rewrit
 
         {/* Footer */}
         <div style={{
-          padding: '8px 14px', borderTop: `1px solid ${C.border}`,
+          padding: '10px 16px', borderTop: `1px solid ${C.divider}`,
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          background: C.surfaceMuted,
         }}>
-          <span style={{ fontSize: 10, color: C.textLight }}>By Inline</span>
-          <span style={{ fontSize: 10, color: C.textLight }}>⠿</span>
+          <span style={{ fontSize: 11, color: C.textLight, fontWeight: 500 }}>By Inline</span>
+          <span style={{ fontSize: 11, color: C.textLight }}>⠿</span>
         </div>
       </div>
     )
@@ -166,7 +246,7 @@ export default function Rewrite({ selectedText, originalRange, onClose }: Rewrit
   /* ─── Result / Loading state ─── */
   return (
     <div style={{
-      width: 320, background: C.bg, border: `1.5px solid ${C.border}`,
+      width: 288, background: C.bg, border: `1px solid ${C.border}`,
       borderRadius: C.radius, boxShadow: C.shadow, fontFamily: FONT,
       overflow: 'hidden', userSelect: 'none',
     }}>
@@ -174,36 +254,57 @@ export default function Rewrite({ selectedText, originalRange, onClose }: Rewrit
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '10px 14px', background: C.headerBg,
-        borderBottom: `1.5px solid ${C.border}`,
+        borderBottom: `1px solid ${C.divider}`,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <ISparkle />
-          <span style={{ fontSize: 13, fontWeight: 700, color: C.accent }}>Rewrite</span>
+          <span style={{ fontSize: 13, fontWeight: 500, color: C.accent, letterSpacing: '-0.02em' }}>Rewrite</span>
         </div>
-        <button onClick={onClose} style={btnIcon}><IClose /></button>
+        <button type="button" onClick={onClose} style={btnIcon}><IClose /></button>
       </div>
 
       {/* Result body */}
-      <div style={{ padding: 14 }}>
+      <div style={{ padding: 18 }}>
         <div style={{
-          padding: 12, border: `1.5px solid ${C.border}`, borderRadius: 8,
-          fontSize: 13, lineHeight: 1.6, color: C.text, minHeight: 60,
-          background: C.surfaceMuted,
+          padding: 16, border: `1px solid ${C.border}`, borderRadius: C.radiusMd,
+          fontSize: 13, lineHeight: 1.65, color: C.text, minHeight: 72,
+          background: C.surfaceBubble, boxShadow: C.shadowSoft,
         }}>
           {loading ? (
             <span style={{ color: C.textMuted, fontStyle: 'italic' }}>Generating…</span>
+          ) : showDiff && result ? (
+            <span>
+              {computeWordDiff(selectedText, result).map((p, i) =>
+                p.type === 'del' ? (
+                  <span key={i} style={{ color: '#ef4444', textDecoration: 'line-through', background: 'rgba(239,68,68,0.08)' }}>{p.text}</span>
+                ) : p.type === 'add' ? (
+                  <span key={i} style={{ color: '#22c55e', background: 'rgba(34,197,94,0.08)' }}>{p.text}</span>
+                ) : (
+                  <span key={i}>{p.text}</span>
+                )
+              )}
+            </span>
           ) : result}
         </div>
 
         {/* Action row */}
         {!loading && (
-          <div style={{ display: 'flex', gap: 6, marginTop: 12, alignItems: 'center' }}>
-            <button onClick={handleRetry} style={pillBtn}>Retry</button>
-            <button onClick={() => { setResult(null); customRef.current?.focus() }} style={pillBtn}>Refine</button>
-            <button onClick={handleInsert} style={{
-              ...pillBtn, background: C.accent, color: '#fff', borderColor: C.accent, fontWeight: 700,
-            }}>Insert</button>
-            <button onClick={handleCopy} style={{ ...btnIcon, marginLeft: 'auto' }}><ICopy /></button>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14, alignItems: 'center' }}>
+            <button type="button" onClick={handleRetry} style={pillBtn}>Retry</button>
+            <button type="button" onClick={() => { setResult(null); setShowDiff(false); setInserted(false); customRef.current?.focus() }} style={pillBtn}>Refine</button>
+            <button type="button" onClick={() => setShowDiff(d => !d)} style={pillBtn}>{showDiff ? 'Hide diff' : 'Show diff'}</button>
+            {!inserted ? (
+              <button type="button" onClick={handleInsert} style={{
+                ...pillBtn, background: C.accent, color: '#fff', borderColor: C.accent, fontWeight: 600,
+                boxShadow: C.shadowSoft,
+              }}>Insert</button>
+            ) : (
+              <button type="button" onClick={handleUndo} style={{
+                ...pillBtn, background: '#ef4444', color: '#fff', borderColor: '#ef4444', fontWeight: 500,
+                boxShadow: C.shadowSoft,
+              }}>Undo</button>
+            )}
+            <button type="button" onClick={handleCopy} style={{ ...btnIcon, marginLeft: 'auto' }}><ICopy /></button>
           </div>
         )}
 
@@ -214,21 +315,22 @@ export default function Rewrite({ selectedText, originalRange, onClose }: Rewrit
           onChange={e => setCustomPrompt(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && customPrompt.trim()) runTask('rewrite', customPrompt) }}
           style={{
-            width: '100%', boxSizing: 'border-box', marginTop: 10,
-            padding: '8px 10px', border: `1.5px solid ${C.border}`, borderRadius: 8,
-            fontSize: 12, outline: 'none', color: C.text,
-            fontFamily: FONT,
+            width: '100%', boxSizing: 'border-box', marginTop: 14,
+            padding: '11px 16px', border: `1px solid ${C.border}`, borderRadius: C.radiusPill,
+            fontSize: 13, outline: 'none', color: C.text,
+            fontFamily: FONT, background: C.inputBg, boxShadow: C.shadowSoft,
           }}
         />
       </div>
 
       {/* Footer */}
       <div style={{
-        padding: '8px 14px', borderTop: `1px solid ${C.border}`,
+        padding: '10px 16px', borderTop: `1px solid ${C.divider}`,
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        background: C.surfaceMuted,
       }}>
-        <span style={{ fontSize: 10, color: C.textLight }}>By Inline</span>
-        <span style={{ fontSize: 10, color: C.textLight }}>⠿</span>
+        <span style={{ fontSize: 11, color: C.textLight, fontWeight: 500 }}>By Inline</span>
+        <span style={{ fontSize: 11, color: C.textLight }}>⠿</span>
       </div>
     </div>
   )
@@ -237,13 +339,16 @@ export default function Rewrite({ selectedText, originalRange, onClose }: Rewrit
 /* shared button styles */
 const btnIcon: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-  width: 28, height: 28, border: 'none', borderRadius: 6,
-  background: 'transparent', cursor: 'pointer', padding: 0,
+  width: 32, height: 32, border: 'none', borderRadius: C.radiusSm,
+  background: 'rgba(255,255,255,0.35)', cursor: 'pointer', padding: 0,
+  transition: 'background 0.15s',
 }
 
 const pillBtn: React.CSSProperties = {
-  padding: '6px 16px', borderRadius: 999,
-  border: `1.5px solid ${C.border}`, background: C.bg,
-  fontSize: 12, fontWeight: 600, cursor: 'pointer',
+  padding: '8px 18px', borderRadius: C.radiusPill,
+  border: `1px solid ${C.border}`, background: C.surfaceBubble,
+  fontSize: 12, fontWeight: 500, cursor: 'pointer',
   color: C.text, fontFamily: FONT,
+  boxShadow: C.shadowSoft,
+  transition: 'transform 0.15s ease, background 0.15s',
 }

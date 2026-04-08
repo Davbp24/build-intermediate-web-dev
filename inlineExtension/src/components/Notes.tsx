@@ -2,6 +2,21 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { PANEL as C, FONT } from '../lib/extensionTheme'
 
 type HeadingLevel = 'Normal' | 'Subheading' | 'Heading'
+type PaperStyle = 'Plain' | 'Ruled' | 'Grid' | 'Dotted'
+
+const PAPER_BG: Record<PaperStyle, string> = {
+  Plain: 'none',
+  Ruled: 'repeating-linear-gradient(to bottom, transparent, transparent 27px, rgba(180,170,160,0.18) 27px, rgba(180,170,160,0.18) 28px)',
+  Grid: 'repeating-linear-gradient(to bottom, transparent, transparent 27px, rgba(180,170,160,0.18) 27px, rgba(180,170,160,0.18) 28px), repeating-linear-gradient(to right, transparent, transparent 27px, rgba(180,170,160,0.18) 27px, rgba(180,170,160,0.18) 28px)',
+  Dotted: 'radial-gradient(circle, rgba(180,170,160,0.3) 1px, transparent 1px)',
+}
+
+const PAPER_SIZE: Record<PaperStyle, string> = {
+  Plain: 'auto',
+  Ruled: 'auto',
+  Grid: 'auto',
+  Dotted: '20px 20px',
+}
 
 /* ─── Icons ─── */
 const INote = () => (
@@ -18,8 +33,8 @@ const IClose = () => (
 
 const HEADING_MAP: Record<HeadingLevel, { tag: string; size: number; weight: number }> = {
   Normal: { tag: 'div', size: 13, weight: 400 },
-  Subheading: { tag: 'h3', size: 15, weight: 600 },
-  Heading: { tag: 'h2', size: 18, weight: 700 },
+  Subheading: { tag: 'h3', size: 15, weight: 500 },
+  Heading: { tag: 'h2', size: 18, weight: 500 },
 }
 
 interface NotesProps {
@@ -31,6 +46,8 @@ interface NotesProps {
 export default function Notes({ onClose, initialX = 100, initialY = 100 }: NotesProps) {
   const [headingLevel, setHeadingLevel] = useState<HeadingLevel>('Normal')
   const [showHeadingMenu, setShowHeadingMenu] = useState(false)
+  const [paperStyle, setPaperStyle] = useState<PaperStyle>('Plain')
+  const [showPaperMenu, setShowPaperMenu] = useState(false)
   const [pos, setPos] = useState({ x: initialX, y: initialY })
   const [size, setSize] = useState({ w: 320, h: 260 })
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -88,7 +105,7 @@ export default function Notes({ onClose, initialX = 100, initialY = 100 }: Notes
     <div style={{
       position: 'fixed', left: pos.x, top: pos.y,
       width: size.w, height: size.h,
-      background: C.bg, border: `1.5px solid ${C.border}`,
+      background: C.bg, border: `1px solid ${C.border}`,
       borderRadius: C.radius, boxShadow: C.shadow,
       fontFamily: FONT,
       display: 'flex', flexDirection: 'column',
@@ -102,8 +119,8 @@ export default function Notes({ onClose, initialX = 100, initialY = 100 }: Notes
         onPointerUp={onPointerUp}
         style={{
           display: 'flex', alignItems: 'center', gap: 2,
-          padding: '6px 10px', background: C.headerBg,
-          borderBottom: `1.5px solid ${C.border}`,
+          padding: '8px 12px', background: C.headerBg,
+          borderBottom: `1px solid ${C.divider}`,
           cursor: 'grab', flexShrink: 0, touchAction: 'none',
         }}
       >
@@ -116,18 +133,18 @@ export default function Notes({ onClose, initialX = 100, initialY = 100 }: Notes
             onClick={() => setShowHeadingMenu(v => !v)}
             style={{
               display: 'flex', alignItems: 'center', gap: 3,
-              padding: '3px 8px', border: `1.5px solid ${C.border}`, borderRadius: 6,
-              background: C.bg, fontSize: 11, fontWeight: 600, color: C.text,
-              cursor: 'pointer',
+              padding: '5px 12px', border: `1px solid ${C.border}`, borderRadius: C.radiusPill,
+              background: C.surfaceBubble, fontSize: 11, fontWeight: 500, color: C.text,
+              cursor: 'pointer', boxShadow: C.shadowSoft,
             }}
           >
             Aa <span style={{ fontSize: 8, color: C.textLight }}>▼</span>
           </button>
           {showHeadingMenu && (
             <div style={{
-              position: 'absolute', top: '100%', left: 0, marginTop: 4,
-              background: C.bg, border: `1.5px solid ${C.border}`, borderRadius: 8,
-              boxShadow: C.shadow, zIndex: 10, overflow: 'hidden', minWidth: 120,
+              position: 'absolute', top: '100%', left: 0, marginTop: 6,
+              background: C.bg, border: `1px solid ${C.border}`, borderRadius: C.radiusMd,
+              boxShadow: C.shadow, zIndex: 10, overflow: 'hidden', minWidth: 128,
             }}>
               {(['Normal', 'Subheading', 'Heading'] as const).map(l => (
                 <button key={l}
@@ -146,16 +163,54 @@ export default function Notes({ onClose, initialX = 100, initialY = 100 }: Notes
           )}
         </div>
 
-        <div style={{ width: 1, height: 18, background: C.border, margin: '0 4px', flexShrink: 0 }} />
+        {/* Paper dropdown */}
+        <div style={{ position: 'relative', marginLeft: 2 }}>
+          <button
+            onPointerDown={e => e.stopPropagation()}
+            onClick={() => { setShowPaperMenu(v => !v); setShowHeadingMenu(false) }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 3,
+              padding: '5px 10px', border: `1px solid ${C.border}`, borderRadius: C.radiusPill,
+              background: C.surfaceBubble, fontSize: 11, fontWeight: 500, color: C.text,
+              cursor: 'pointer', boxShadow: C.shadowSoft,
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2zm2-1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H4z"/></svg>
+            <span style={{ fontSize: 8, color: C.textLight }}>▼</span>
+          </button>
+          {showPaperMenu && (
+            <div style={{
+              position: 'absolute', top: '100%', left: 0, marginTop: 6,
+              background: C.bg, border: `1px solid ${C.border}`, borderRadius: C.radiusMd,
+              boxShadow: C.shadow, zIndex: 10, overflow: 'hidden', minWidth: 110,
+            }}>
+              {(['Plain', 'Ruled', 'Grid', 'Dotted'] as const).map(p => (
+                <button key={p}
+                  onPointerDown={e => e.stopPropagation()}
+                  onClick={() => { setPaperStyle(p); setShowPaperMenu(false) }}
+                  style={{
+                    display: 'block', width: '100%', textAlign: 'left',
+                    padding: '7px 12px', border: 'none', borderRadius: 0,
+                    background: paperStyle === p ? C.headerBg : 'transparent',
+                    fontSize: 12, fontWeight: 500,
+                    color: C.text, cursor: 'pointer', fontFamily: FONT,
+                  }}
+                >{p}</button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{ width: 1, height: 18, background: C.divider, margin: '0 4px', flexShrink: 0 }} />
 
         {/* Formatting buttons */}
         <ToolbarBtn onPointerDown={e => e.stopPropagation()} onClick={() => fmt('bold')} title="Bold"><b style={{ fontSize: 12 }}>B</b></ToolbarBtn>
         <ToolbarBtn onPointerDown={e => e.stopPropagation()} onClick={() => fmt('italic')} title="Italic"><i style={{ fontSize: 12 }}>I</i></ToolbarBtn>
         <ToolbarBtn onPointerDown={e => e.stopPropagation()} onClick={() => fmt('underline')} title="Underline">
-          <span style={{ fontSize: 12, fontWeight: 700, color: '#1C1E26' }}>A</span>
+          <span style={{ fontSize: 12, fontWeight: 500, color: '#1C1E26' }}>A</span>
         </ToolbarBtn>
 
-        <div style={{ width: 1, height: 18, background: C.border, margin: '0 4px', flexShrink: 0 }} />
+        <div style={{ width: 1, height: 18, background: C.divider, margin: '0 4px', flexShrink: 0 }} />
 
         <ToolbarBtn onPointerDown={e => e.stopPropagation()} onClick={() => fmt('insertUnorderedList')} title="Bullet list">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M5 11.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zM3 8a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm0 4a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm0-8a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/></svg>
@@ -188,13 +243,15 @@ export default function Notes({ onClose, initialX = 100, initialY = 100 }: Notes
           flex: 1, padding: '10px 14px', fontSize: 13, lineHeight: 1.65,
           color: C.text, outline: 'none', overflowY: 'auto',
           cursor: 'text', userSelect: 'text',
+          backgroundImage: PAPER_BG[paperStyle],
+          backgroundSize: PAPER_SIZE[paperStyle],
         }}
       />
 
       {/* Footer */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '6px 12px', borderTop: `1px solid ${C.border}`,
+        padding: '8px 14px', borderTop: `1px solid ${C.divider}`,
         background: C.surfaceMuted, flexShrink: 0,
       }}>
         <span style={{ fontSize: 10, color: C.textLight }}>By {author} | {timestamp}</span>
@@ -215,8 +272,8 @@ function ToolbarBtn({ children, ...props }: React.ButtonHTMLAttributes<HTMLButto
       {...props}
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        width: 26, height: 26, border: 'none', borderRadius: 6,
-        background: 'transparent', cursor: 'pointer', color: C.textMuted, padding: 0,
+        width: 28, height: 28, border: 'none', borderRadius: C.radiusSm,
+        background: 'rgba(255,255,255,0.35)', cursor: 'pointer', color: C.textMuted, padding: 0,
         ...props.style,
       }}
     >{children}</button>

@@ -1,26 +1,60 @@
 /**
- * Panel UI tokens — aligned with web app globals (warm cream + #1C1E26).
+ * Panel UI tokens — aligned with the Inline web app: calm, minimal elevation,
+ * moderate rounding (14px outer / 10px inner), font-medium weight, ring borders.
  */
 export const FONT =
   '-apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif' as const
 
 export const PANEL = {
-  bg: '#ffffff',
-  headerBg: '#FAF5EE',
-  surfaceMuted: '#FDFBF7',
-  border: '#d6d3d1',
-  shadow: '0 4px 20px rgba(0,0,0,0.10)',
+  bg: '#FFFBF8',
+  headerBg: '#F5EBE3',
+  surfaceMuted: '#FBF6F0',
+  surfaceBubble: '#FFFEFC',
+  border: 'rgba(218, 204, 192, 0.55)',
+  divider: 'rgba(40, 36, 32, 0.06)',
+  shadow: '0 12px 40px -12px rgba(28, 30, 38, 0.16)',
+  shadowSoft: 'none',
   text: '#1C1E26',
-  textMuted: '#78716c',
-  textLight: '#a8a29e',
+  textMuted: '#6b6560',
+  textLight: '#9c948c',
   accent: '#1C1E26',
   accentHover: '#13151B',
   link: '#4B83C4',
-  hoverBg: '#F0EBE3',
-  toneSelectedBg: '#F0EBE3',
-  radius: 12,
-  toggleOn: '#1C1E26',
-  toggleOff: '#d6d3d1',
+  hoverBg: 'rgba(245, 232, 220, 0.6)',
+  toneSelectedBg: '#EDDDCF',
+  radius: 14,
+  radiusMd: 10,
+  radiusSm: 8,
+  radiusPill: 9999,
+  toggleOn: '#2c2f3a',
+  toggleOff: '#ddd4cc',
+  inputBg: '#FFFCFA',
+} as const
+
+export const DARK_PANEL = {
+  bg: '#1C1E26',
+  headerBg: '#252830',
+  surfaceMuted: '#2a2d38',
+  surfaceBubble: '#22252e',
+  border: 'rgba(255, 255, 255, 0.08)',
+  divider: 'rgba(255, 255, 255, 0.06)',
+  shadow: '0 12px 40px -12px rgba(0, 0, 0, 0.28)',
+  shadowSoft: 'none',
+  text: '#E4E4E8',
+  textMuted: '#9a9ba4',
+  textLight: '#6b6d78',
+  accent: '#E4E4E8',
+  accentHover: '#FFFFFF',
+  link: '#7DB4F0',
+  hoverBg: 'rgba(255, 255, 255, 0.06)',
+  toneSelectedBg: '#31343e',
+  radius: 14,
+  radiusMd: 10,
+  radiusSm: 8,
+  radiusPill: 9999,
+  toggleOn: '#7DB4F0',
+  toggleOff: '#3a3d48',
+  inputBg: '#22252e',
 } as const
 
 export type PanelTheme = typeof PANEL

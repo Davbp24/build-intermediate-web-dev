@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { PANEL as C, FONT } from '../lib/extensionTheme'
 
 /* ─── Icons ─── */
@@ -35,20 +35,24 @@ const IPause = () => (
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <button
+      type="button"
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
       style={{
-        position: 'relative', width: 44, height: 24, borderRadius: 12,
+        position: 'relative', width: 48, height: 28, borderRadius: C.radiusPill,
         background: checked ? C.toggleOn : C.toggleOff,
         border: 'none', cursor: 'pointer', padding: 0,
-        transition: 'background 0.2s',
+        transition: 'background 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
+        boxShadow: 'none',
       }}
     >
       <span style={{
-        position: 'absolute', top: 3, left: checked ? 23 : 3,
-        width: 18, height: 18, borderRadius: '50%', background: '#fff',
-        transition: 'left 0.2s', display: 'block',
+        position: 'absolute', top: 4, left: checked ? 24 : 4,
+        width: 20, height: 20, borderRadius: '50%', background: '#fff',
+        transition: 'left 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
+        display: 'block',
+        boxShadow: 'none',
       }} />
     </button>
   )
@@ -65,6 +69,36 @@ export default function Settings({ onClose, onOpenDashboard }: SettingsProps) {
   const [immersiveReader, setImmersiveReader] = useState(false)
   const [language, setLanguage] = useState('en-US')
   const [paused, setPaused] = useState(false)
+  const [blockedDomains, setBlockedDomains] = useState<string[]>([])
+  const [newDomain, setNewDomain] = useState('')
+
+  useEffect(() => {
+    chrome.storage.local.get(['inlineBlockedDomains'], r => {
+      try {
+        const raw = r.inlineBlockedDomains
+        if (typeof raw === 'string') {
+          const parsed = JSON.parse(raw)
+          if (Array.isArray(parsed)) setBlockedDomains(parsed)
+        }
+      } catch { /* keep default */ }
+    })
+  }, [])
+
+  const persistBlocked = useCallback((domains: string[]) => {
+    setBlockedDomains(domains)
+    chrome.storage.local.set({ inlineBlockedDomains: JSON.stringify(domains) })
+  }, [])
+
+  const addDomain = useCallback(() => {
+    const d = newDomain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')
+    if (!d || blockedDomains.includes(d)) return
+    persistBlocked([...blockedDomains, d])
+    setNewDomain('')
+  }, [newDomain, blockedDomains, persistBlocked])
+
+  const removeDomain = useCallback((domain: string) => {
+    persistBlocked(blockedDomains.filter(d => d !== domain))
+  }, [blockedDomains, persistBlocked])
 
   const toggleHighContrast = useCallback((v: boolean) => {
     setHighContrast(v)
@@ -80,7 +114,7 @@ export default function Settings({ onClose, onOpenDashboard }: SettingsProps) {
 
   return (
     <div style={{
-      width: 300, background: C.bg, border: `1.5px solid ${C.border}`,
+      width: 272, background: C.bg, border: `1px solid ${C.border}`,
       borderRadius: C.radius, boxShadow: C.shadow, fontFamily: FONT,
       overflow: 'hidden', userSelect: 'none', display: 'flex', flexDirection: 'column',
     }}>
@@ -88,46 +122,51 @@ export default function Settings({ onClose, onOpenDashboard }: SettingsProps) {
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '10px 14px', background: C.headerBg,
-        borderBottom: `1.5px solid ${C.border}`,
+        borderBottom: `1px solid ${C.divider}`,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <IPencil />
-          <span style={{ fontSize: 15, fontWeight: 800, color: C.accent, letterSpacing: '-0.02em' }}>Inline</span>
+          <span style={{ fontSize: 13, fontWeight: 500, color: C.accent, letterSpacing: '-0.02em' }}>Inline</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <button onClick={() => {}} style={hdrBtn}><IGear /></button>
-          <button onClick={onClose} style={hdrBtn}><IArrowRight /></button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button type="button" onClick={() => {}} style={hdrBtn}><IGear /></button>
+          <button type="button" onClick={onClose} style={hdrBtn}><IArrowRight /></button>
         </div>
       </div>
 
       {/* Content */}
-      <div style={{ padding: '14px 16px', flex: 1 }}>
-        <p style={{ margin: '0 0 14px', fontSize: 15, fontWeight: 700, color: C.text }}>Global settings</p>
+      <div style={{ padding: '18px 18px 20px', flex: 1 }}>
+        <p style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 500, color: C.text, letterSpacing: '-0.02em' }}>Global settings</p>
 
         {/* Accessibility */}
-        <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: C.text }}>Accessibility</p>
+        <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 500, color: C.textMuted }}>Accessibility</p>
         <div style={{
-          border: `1.5px solid ${C.border}`, borderRadius: 10, overflow: 'hidden',
-          marginBottom: 14,
+          border: `1px solid ${C.border}`, borderRadius: C.radiusMd, overflow: 'hidden',
+          marginBottom: 16, background: C.surfaceBubble, boxShadow: C.shadowSoft,
         }}>
           <SettingsRow label="Screen reader" right={<Toggle checked={screenReader} onChange={setScreenReader} />} />
           <SettingsRow label="High contrast" right={<Toggle checked={highContrast} onChange={toggleHighContrast} />} border />
-          <SettingsRow label="Immersive reader" right={<Toggle checked={immersiveReader} onChange={setImmersiveReader} />} border />
+          <SettingsRow label="Immersive reader" right={<Toggle checked={immersiveReader} onChange={v => {
+            setImmersiveReader(v)
+            chrome.storage.local.set({ inlineFocusMode: String(v) })
+            document.dispatchEvent(new CustomEvent('inline:focusMode', { detail: { enabled: v } }))
+          }} />} border />
         </div>
 
         {/* Language */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '10px 14px', border: `1.5px solid ${C.border}`, borderRadius: 10,
+          padding: '12px 16px', border: `1px solid ${C.border}`, borderRadius: C.radiusMd,
+          background: C.surfaceBubble, boxShadow: C.shadowSoft,
         }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>Language</span>
+          <span style={{ fontSize: 13, fontWeight: 500, color: C.text }}>Language</span>
           <select
             value={language}
             onChange={e => setLanguage(e.target.value)}
             style={{
-              padding: '4px 8px', border: `1.5px solid ${C.border}`, borderRadius: 6,
-              fontSize: 12, color: C.text, background: C.bg, cursor: 'pointer',
-              outline: 'none',
+              padding: '8px 14px', border: `1px solid ${C.border}`, borderRadius: C.radiusPill,
+              fontSize: 12, color: C.text, background: C.inputBg, cursor: 'pointer',
+              outline: 'none', fontFamily: FONT, fontWeight: 500,
             }}
           >
             <option value="en-US">English (US)</option>
@@ -138,26 +177,75 @@ export default function Settings({ onClose, onOpenDashboard }: SettingsProps) {
             <option value="pt">Português</option>
           </select>
         </div>
+
+        {/* Blocked sites */}
+        <p style={{ margin: '18px 0 10px', fontSize: 12, fontWeight: 500, color: C.textMuted }}>Blocked sites</p>
+        <div style={{
+          border: `1px solid ${C.border}`, borderRadius: C.radiusMd,
+          background: C.surfaceBubble, boxShadow: C.shadowSoft, padding: '12px 14px',
+        }}>
+          {blockedDomains.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+              {blockedDomains.map(d => (
+                <span key={d} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '4px 10px', borderRadius: C.radiusPill,
+                  border: `1px solid ${C.border}`, background: C.inputBg,
+                  fontSize: 11, fontWeight: 500, color: C.text, fontFamily: FONT,
+                }}>
+                  {d}
+                  <button type="button" onClick={() => removeDomain(d)} style={{
+                    border: 'none', background: 'transparent', cursor: 'pointer',
+                    padding: 0, lineHeight: 1, fontSize: 13, color: C.textMuted, fontWeight: 500,
+                  }}>×</button>
+                </span>
+              ))}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 6 }}>
+            <input
+              value={newDomain}
+              onChange={e => setNewDomain(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') addDomain() }}
+              placeholder="example.com"
+              style={{
+                flex: 1, padding: '8px 14px', border: `1px solid ${C.border}`,
+                borderRadius: C.radiusPill, fontSize: 12, outline: 'none',
+                color: C.text, background: C.inputBg, fontFamily: FONT,
+              }}
+            />
+            <button type="button" onClick={addDomain} style={{
+              padding: '8px 14px', borderRadius: C.radiusPill,
+              border: `1px solid ${C.border}`, background: C.bg,
+              fontSize: 12, fontWeight: 500, cursor: 'pointer',
+              color: C.text, fontFamily: FONT,
+            }}>Add</button>
+          </div>
+        </div>
       </div>
 
       {/* Footer */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '10px 14px', borderTop: `1.5px solid ${C.border}`,
+        padding: '12px 16px', borderTop: `1px solid ${C.divider}`,
+        background: C.surfaceMuted,
       }}>
-        <button onClick={onOpenDashboard} style={{
-          display: 'flex', alignItems: 'center', gap: 6,
+        <button type="button" onClick={onOpenDashboard} style={{
+          display: 'flex', alignItems: 'center', gap: 8,
           border: 'none', background: 'transparent', cursor: 'pointer',
-          fontSize: 13, fontWeight: 600, color: C.text, padding: 0,
+          fontSize: 13, fontWeight: 500, color: C.text, padding: '8px 10px',
+          borderRadius: C.radiusPill,
+          transition: 'background 0.15s',
         }}>
           All settings <IExtLink />
         </button>
-        <button onClick={togglePause} style={{
+        <button type="button" onClick={togglePause} style={{
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          width: 32, height: 32, borderRadius: 8,
-          border: `1.5px solid ${C.border}`,
-          background: paused ? '#fef2f2' : C.bg, cursor: 'pointer',
+          width: 40, height: 40, borderRadius: C.radiusMd,
+          border: `1px solid ${C.border}`,
+          background: paused ? '#fef2f2' : C.surfaceBubble, cursor: 'pointer',
           color: paused ? '#ef4444' : C.textMuted,
+          boxShadow: C.shadowSoft,
         }}>
           <IPause />
         </button>
@@ -170,10 +258,10 @@ function SettingsRow({ label, right, border }: { label: string; right: React.Rea
   return (
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      padding: '10px 14px',
-      ...(border ? { borderTop: `1px solid ${C.border}` } : {}),
+      padding: '12px 16px',
+      ...(border ? { borderTop: `1px solid ${C.divider}` } : {}),
     }}>
-      <span style={{ fontSize: 13, color: C.text }}>{label}</span>
+      <span style={{ fontSize: 13, fontWeight: 500, color: C.text }}>{label}</span>
       {right}
     </div>
   )
@@ -181,6 +269,6 @@ function SettingsRow({ label, right, border }: { label: string; right: React.Rea
 
 const hdrBtn: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-  width: 30, height: 30, border: 'none', borderRadius: 8,
-  background: 'transparent', cursor: 'pointer', padding: 0,
+  width: 36, height: 36, border: 'none', borderRadius: C.radiusSm,
+  background: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: 0,
 }

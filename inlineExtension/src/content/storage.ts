@@ -22,6 +22,7 @@ export interface StickyNoteData {
   title?: string
   createdAt: number
   updatedAt: number
+  mediaTimestamp?: number
 }
 
 /**

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { generateText } from 'ai'
+import { generateText, streamText } from 'ai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { getAIApiKey, getSupabaseAndUserFromRequest } from '@/lib/ai-key'
 
@@ -9,12 +9,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  let task = '', text = '', instruction = ''
+  let task = '', text = '', instruction = '', stream = false
   try {
     const body = await request.json()
     task        = body.task        ?? ''
     text        = body.text        ?? ''
     instruction = body.instruction ?? ''
+    stream      = body.stream      === true
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
@@ -33,9 +34,20 @@ export async function POST(request: Request) {
     `Process this text:\n\n${text}`
 
   const google = createGoogleGenerativeAI({ apiKey })
+  const modelId = 'gemini-2.0-flash'
+  const truncatedPrompt = prompt.slice(0, 12000)
+
+  if (stream) {
+    const result = streamText({
+      model: google(modelId),
+      prompt: truncatedPrompt,
+    })
+    return result.toTextStreamResponse()
+  }
+
   const { text: result } = await generateText({
-    model: google('gemini-2.0-flash'),
-    prompt: prompt.slice(0, 12000),
+    model: google(modelId),
+    prompt: truncatedPrompt,
   })
 
   return NextResponse.json({ result: result.trim() })

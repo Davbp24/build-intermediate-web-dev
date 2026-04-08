@@ -3,7 +3,7 @@
   "name": "Inline",
   "description": "Annotate any webpage with sticky notes, highlights, and spatial saves.",
   "version": "1.1",
-  "permissions": ["storage", "activeTab", "contextMenus", "scripting"],
+  "permissions": ["storage", "activeTab", "contextMenus", "scripting", "alarms", "tabs"],
   "host_permissions": ["http://localhost:3000/*", "https://*/*"],
   "background": {
     "service_worker": "background.js"
@@ -18,5 +18,29 @@
   "action": {
     "default_popup": "popup.html",
     "default_icon": "vite.svg"
+  },
+  "commands": {
+    "toggle-command-palette": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+K",
+        "mac": "Command+Shift+K"
+      },
+      "description": "Open command palette"
+    },
+    "toggle-rewrite": {
+      "description": "Toggle Rewrite panel"
+    },
+    "toggle-ai": {
+      "description": "Toggle Ask AI panel"
+    },
+    "toggle-highlighter": {
+      "description": "Toggle Highlighter"
+    },
+    "new-note": {
+      "description": "Create new note"
+    },
+    "toggle-pause": {
+      "description": "Pause/resume extension"
+    }
   }
 }

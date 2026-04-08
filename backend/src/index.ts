@@ -1,6 +1,6 @@
 import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
-import { saveAnnotations } from './apiBranch/AnnotationsAPI';
+import { saveAnnotations, getAnnotations } from './apiBranch/AnnotationsAPI';
 
 const app: Application = express();
 const port = process.env.PORT || 3000;
@@ -20,6 +20,7 @@ app.get('/', (req: Request, res: Response) => {
 });
 
 // Universal pipeline — receives any feature's data and persists it to Supabase
+app.get('/api/annotations', getAnnotations);
 app.post('/api/annotations', saveAnnotations);
 
 app.listen(port, () => {

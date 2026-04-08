@@ -12,6 +12,7 @@ import {
   generateNoteId,
   type StickyNoteData,
 } from './storage'
+import { findMediaElements } from '../lib/mediaDetect'
 
 const PAGE_URL = window.location.href
 const SAVE_DEBOUNCE_MS = 500
@@ -67,6 +68,19 @@ function StickyNotesLayer() {
   )
 }
 
+function useGlobalHide() {
+  const [globalHidden, setGlobalHidden] = useState(false)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ hidden: boolean }>).detail
+      setGlobalHidden(detail.hidden)
+    }
+    document.addEventListener('inline:hideAll', handler)
+    return () => document.removeEventListener('inline:hideAll', handler)
+  }, [])
+  return globalHidden
+}
+
 /**
  * Launcher is a separate subtree from the note layer so toggling note visibility
  * cannot affect this UI (eye + add). Matches site typography / colors.
@@ -75,7 +89,7 @@ function StickyNoteLauncherBar() {
   const ctx = useContext(StickyNotesContext)
   const [hovered, setHovered] = useState(false)
   if (!ctx) return null
-  const { notesVisible, setNotesVisible, handleAddNote } = ctx
+  const { handleAddNote } = ctx
 
   return (
     <div
@@ -102,11 +116,11 @@ function StickyNoteLauncherBar() {
         onClick={e => {
           e.preventDefault()
           e.stopPropagation()
-          setNotesVisible(v => !v)
+          document.dispatchEvent(new CustomEvent('inline:hideAll', { detail: { hidden: true } }))
         }}
-        title={notesVisible ? 'Hide sticky notes only' : 'Show sticky notes'}
+        title="Hide extension"
       >
-        <IEye crossed={!notesVisible} />
+        <IEye crossed />
       </button>
 
       <button
@@ -136,7 +150,7 @@ function StickyNoteLauncherBar() {
             whiteSpace: 'nowrap',
             fontFamily: '-apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif',
             fontSize: 13,
-            fontWeight: 600,
+            fontWeight: 500,
           }}
         >
           Add Note
@@ -153,7 +167,17 @@ function StickyNotesProvider({ children }: { children: ReactNode }) {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    setLoaded(true)
+    chrome.runtime.sendMessage(
+      { type: 'LOAD_ANNOTATIONS', payload: { pageUrl: PAGE_URL } },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          console.error('[Inline] Load failed:', chrome.runtime.lastError.message)
+        } else if (response?.ok && Array.isArray(response.data?.elements?.stickyNotes)) {
+          setNotes(response.data.elements.stickyNotes)
+        }
+        setLoaded(true)
+      },
+    )
   }, [])
 
   useEffect(() => {
@@ -183,6 +207,9 @@ function StickyNotesProvider({ children }: { children: ReactNode }) {
 
   const handleAddNote = useCallback(() => {
     const now = Date.now()
+    const media = findMediaElements()
+    const playingMedia = media.find(m => !m.element.paused)
+    const mediaTimestamp = playingMedia ? playingMedia.currentTime : undefined
     setNotes(prev => {
       const offset = prev.length * 18
       return [...prev, {
@@ -197,6 +224,7 @@ function StickyNotesProvider({ children }: { children: ReactNode }) {
         title: 'Note',
         createdAt: now,
         updatedAt: now,
+        ...(mediaTimestamp !== undefined && { mediaTimestamp }),
       }]
     })
   }, [])
@@ -228,11 +256,21 @@ function StickyNotesProvider({ children }: { children: ReactNode }) {
   )
 }
 
+function HideAwareWrapper() {
+  const globalHidden = useGlobalHide()
+  if (globalHidden) return null
+  return (
+    <>
+      <StickyNotesLayer />
+      <StickyNoteLauncherBar />
+    </>
+  )
+}
+
 export default function StickyNotesManager() {
   return (
     <StickyNotesProvider>
-      <StickyNotesLayer />
-      <StickyNoteLauncherBar />
+      <HideAwareWrapper />
     </StickyNotesProvider>
   )
 }

@@ -567,7 +567,7 @@ export default function Sidebar() {
                 <span className="block h-4 w-1 rounded-full bg-white -rotate-12" />
               </div>
               <span className="font-bold text-[14px] tracking-tight whitespace-nowrap text-stone-800">
-                Inline
+                inline
               </span>
             </Link>
           </div>

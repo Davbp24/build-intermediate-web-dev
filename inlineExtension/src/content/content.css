@@ -229,3 +229,21 @@
 
 /* ─── Context menu pointer events ─── */
 .inline-context-menu { pointer-events: auto; }
+
+/* ─── Citation / Quote Cards ─── */
+[data-inline-citation] {
+  border-left: 4px solid #1C1E26;
+  padding: 8px 16px;
+  margin: 8px 0;
+  background: rgba(253, 251, 247, 0.95);
+  border-radius: 0 8px 8px 0;
+  font-style: normal;
+  line-height: 1.6;
+}
+[data-inline-citation] .inline-cite-attr {
+  display: block;
+  font-size: 10px;
+  color: #78716c;
+  margin-top: 6px;
+  font-style: italic;
+}

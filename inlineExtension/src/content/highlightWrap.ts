@@ -36,6 +36,17 @@ const ACTION_META: Record<string, { bg: string; title: string }> = {
       existing.push(highlight)
       localStorage.setItem(highlightStorageKey(), JSON.stringify(existing))
     } catch { /* ignore in sandboxed contexts */ }
+
+    try {
+      const all = loadSavedHighlights()
+      chrome.runtime.sendMessage(
+        {
+          type: 'SAVE_ANNOTATIONS',
+          payload: { pageUrl: window.location.href, featureKey: 'highlights', data: all },
+        },
+        () => { if (chrome.runtime.lastError) { /* ignore */ } },
+      )
+    } catch { /* extension context unavailable */ }
   }
   
   export function wrapSelectionWithHighlight(action: string): { text: string; title: string } | null {
@@ -75,41 +86,63 @@ const ACTION_META: Record<string, { bg: string; title: string }> = {
   return { text, title: meta.title }
   }
   
-  export function restoreHighlights(): void {
-    const saved = loadSavedHighlights()
-    if (saved.length === 0) return
-  
+  function applyHighlights(saved: SavedHighlight[]): void {
     const body = document.body
     if (!body) return
-  
+
     for (const h of saved) {
       if (!h.text || h.text.length < 3) continue
-  
+
       const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT)
       let node: Text | null
       while ((node = walker.nextNode() as Text | null)) {
         const idx = node.textContent?.indexOf(h.text) ?? -1
         if (idx === -1) continue
-  
+
         const parent = node.parentElement
         if (parent?.hasAttribute('data-inline-highlight')) continue
-  
+
         try {
           const range = document.createRange()
           range.setStart(node, idx)
           range.setEnd(node, idx + h.text.length)
-  
+
           const span = document.createElement('span')
           span.setAttribute('data-inline-highlight', h.action)
           span.style.backgroundColor = h.bg
           span.style.borderRadius = '4px'
           span.style.padding = '0 3px'
           span.title = h.title
-  
+
           range.surroundContents(span)
         } catch { /* skip if DOM structure doesn't allow it */ }
-  
+
         break
       }
     }
+  }
+
+  export function restoreHighlights(): void {
+    const local = loadSavedHighlights()
+    if (local.length > 0) applyHighlights(local)
+
+    try {
+      chrome.runtime.sendMessage(
+        { type: 'LOAD_ANNOTATIONS', payload: { pageUrl: window.location.href } },
+        (response) => {
+          if (chrome.runtime.lastError || !response?.ok) return
+          const remote: SavedHighlight[] = response.data?.elements?.highlights
+          if (!Array.isArray(remote) || remote.length === 0) return
+
+          const localTexts = new Set(loadSavedHighlights().map((h: SavedHighlight) => h.text))
+          const newOnes = remote.filter((h: SavedHighlight) => !localTexts.has(h.text))
+          if (newOnes.length === 0) return
+
+          const merged = [...loadSavedHighlights(), ...newOnes]
+          try { localStorage.setItem(highlightStorageKey(), JSON.stringify(merged)) } catch { /* ignore */ }
+
+          applyHighlights(newOnes)
+        },
+      )
+    } catch { /* extension context unavailable */ }
   }

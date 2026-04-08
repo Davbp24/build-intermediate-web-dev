@@ -61,3 +61,25 @@ export async function saveAnnotations(req: Request, res: Response): Promise<void
 
   res.status(200).json({ success: true });
 }
+
+export async function getAnnotations(req: Request, res: Response): Promise<void> {
+  const pageUrl = req.query.url as string | undefined;
+
+  if (!pageUrl) {
+    res.status(400).json({ error: 'url query parameter is required' });
+    return;
+  }
+
+  const fetchResult = await (supabase
+    .from('annotations')
+    .select('elements')
+    .eq('page_url', pageUrl)
+    .maybeSingle() as unknown as Promise<{ data: ElementsRow; error: SupabaseError }>);
+
+  if (fetchResult.error) {
+    res.status(500).json({ error: fetchResult.error.message });
+    return;
+  }
+
+  res.status(200).json({ elements: fetchResult.data?.elements ?? {} });
+}
