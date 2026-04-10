@@ -17,6 +17,11 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_icon": "vite.svg"
+    "default_icon": "Inline.png"
+  },
+  "icons": {
+    "16": "Inline.png",
+    "48": "Inline.png",
+    "128": "Inline.png"
   }
 }
