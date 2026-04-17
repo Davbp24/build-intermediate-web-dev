@@ -167,6 +167,7 @@ function StickyNotesProvider({ children }: { children: ReactNode }) {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
+    if (!chrome.runtime?.id) { setLoaded(true); return }
     chrome.runtime.sendMessage(
       { type: 'LOAD_ANNOTATIONS', payload: { pageUrl: PAGE_URL } },
       (response) => {
@@ -185,6 +186,7 @@ function StickyNotesProvider({ children }: { children: ReactNode }) {
 
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
+      if (!chrome.runtime?.id) return
       chrome.runtime.sendMessage(
         {
           type: 'SAVE_ANNOTATIONS',
@@ -193,7 +195,16 @@ function StickyNotesProvider({ children }: { children: ReactNode }) {
         (response) => {
           if (chrome.runtime.lastError) {
             console.error('[Inline] Message failed:', chrome.runtime.lastError.message)
-          } else if (!response?.ok) {
+            return
+          }
+          if (!response?.ok) {
+            const err = String(response?.error ?? '')
+            if (response?.queued || /queued|offline|unreachable/i.test(err)) {
+              document.dispatchEvent(
+                new CustomEvent('inline:saveResult', { detail: { error: err } }),
+              )
+              return
+            }
             console.error('[Inline] Backend sync failed:', response?.error)
           }
         },

@@ -72,8 +72,6 @@ export default function DashboardPage() {
     <>
       <PageHeader
         crumbs={[{ label: 'Workspace', href: '/app/dashboard' }, { label: 'Dashboard' }]}
-        title="Dashboard"
-        subtitle="Web captures, library documents, and activity for your default workspace."
         action={(
           <span className="flex items-center gap-1.5 text-xs text-muted-foreground px-2 py-1 rounded-md bg-muted/60 border border-border/60">
             <RefreshCw className="w-3 h-3" />
@@ -82,7 +80,7 @@ export default function DashboardPage() {
         )}
       />
 
-      <div className="p-6 space-y-8 max-w-7xl">
+      <div className="w-full min-w-0 p-6 space-y-8">
         <Suspense fallback={(
           <div className="space-y-6">
             <div className="flex gap-3 overflow-hidden">

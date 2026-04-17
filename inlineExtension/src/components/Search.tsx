@@ -64,6 +64,7 @@ export default function Search({ onClose }: SearchProps) {
     try {
       const pageUrl = window.location.href
       const response = await new Promise<{ ok: boolean; data?: any }>((resolve) => {
+        if (!chrome.runtime?.id) { resolve({ ok: false }); return }
         chrome.runtime.sendMessage(
           { type: 'LOAD_ANNOTATIONS', payload: { pageUrl } },
           (res) => resolve(res ?? { ok: false }),

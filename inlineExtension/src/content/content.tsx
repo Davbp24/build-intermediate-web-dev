@@ -11,6 +11,8 @@ import SmartOverlay from './SmartOverlay'
 import PanelHost from './PanelHost'
 import { restoreHighlights } from './highlightWrap'
 import { enableReaderMode, disableReaderMode } from '../lib/readerMode'
+import { loadLayers, type LayerVisibility } from '../lib/layerState'
+import { speakWithElevenLabs, stopSpeaking } from '../lib/elevenLabsTts'
 import cssText from './content.css?inline'
 
 ;(async () => {
@@ -134,5 +136,200 @@ import cssText from './content.css?inline'
         new CustomEvent('inline:command', { detail: { command: message.command } }),
       )
     }
+
+    /* ── Right-click context-menu: Clip to Workspace ── */
+    if (message.type === 'INLINE_FEATURE' && message.featureId === 'clip-to-workspace') {
+      const selection = (message.selectedText as string | undefined)?.trim() ?? ''
+      if (!selection) return
+      try {
+        chrome.storage.local.get(['inlineActiveWorkspaceId'], (r) => {
+          const workspaceId = typeof r.inlineActiveWorkspaceId === 'string'
+            ? r.inlineActiveWorkspaceId
+            : ''
+          chrome.runtime.sendMessage({
+            type: 'CLIP_TO_WORKSPACE',
+            payload: {
+              pageUrl: window.location.href,
+              pageTitle: document.title,
+              selection,
+              highlights: [],
+              workspaceId,
+            },
+          }, () => { if (chrome.runtime.lastError) { /* ignore */ } })
+        })
+      } catch { /* extension context unavailable */ }
+    }
   })
+
+  /* ── Layer visibility toggles ── */
+  const LAYER_SELECTORS: Record<keyof LayerVisibility, string[]> = {
+    highlights: ['[data-inline-highlight]'],
+    drawings: ['#inline-draw-canvas', '#inline-handwriting-canvas'],
+    stickies: ['[data-inline-sticky]', '[data-inline-anchor]'],
+    stamps: ['[data-inline-stamp]'],
+  }
+
+  function applyLayerVisibility(layers: LayerVisibility): void {
+    (Object.keys(LAYER_SELECTORS) as (keyof LayerVisibility)[]).forEach((key) => {
+      const visible = layers[key]
+      for (const sel of LAYER_SELECTORS[key]) {
+        document.querySelectorAll<HTMLElement>(sel).forEach((el) => {
+          el.style.display = visible ? '' : 'none'
+        })
+      }
+    })
+  }
+
+  loadLayers().then(applyLayerVisibility).catch(() => {})
+
+  document.addEventListener('inline:layerToggle', ((e: CustomEvent<LayerVisibility>) => {
+    if (e.detail) applyLayerVisibility(e.detail)
+  }) as EventListener)
+
+  /* ── Stamp placement + persistence ── */
+  interface PlacedStamp {
+    id: string
+    emoji: string
+    x: number
+    y: number
+    createdAt: number
+  }
+
+  let pendingStampEmoji: string | null = null
+  let placedStamps: PlacedStamp[] = []
+  let stampsLoaded = false
+
+  function stampId(): string {
+    return `st-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+  }
+
+  function renderStamp(s: PlacedStamp): void {
+    if (document.querySelector(`[data-inline-stamp-id="${s.id}"]`)) return
+    const el = document.createElement('div')
+    el.setAttribute('data-inline-stamp', 'true')
+    el.setAttribute('data-inline-stamp-id', s.id)
+    el.textContent = s.emoji
+    el.style.cssText = [
+      'position:absolute', `left:${s.x}px`, `top:${s.y}px`,
+      'font-size:24px', 'line-height:1',
+      'pointer-events:none', 'z-index:2147483640',
+      'user-select:none', 'transform:translate(-50%,-50%)',
+    ].join(';')
+    document.body.appendChild(el)
+  }
+
+  function persistStamps(): void {
+    if (!chrome.runtime?.id) return
+    chrome.runtime.sendMessage(
+      {
+        type: 'SAVE_ANNOTATIONS',
+        payload: {
+          pageUrl: window.location.href,
+          featureKey: 'stamps',
+          data: placedStamps,
+          pageTitle: document.title,
+          domain: window.location.hostname,
+          clearedAt: placedStamps.length === 0 ? Date.now() : null,
+        },
+      },
+      () => { if (chrome.runtime.lastError) { /* ignore */ } },
+    )
+  }
+
+  if (chrome.runtime?.id) {
+    chrome.runtime.sendMessage(
+      { type: 'LOAD_ANNOTATIONS', payload: { pageUrl: window.location.href } },
+      (response) => {
+        stampsLoaded = true
+        if (chrome.runtime.lastError || !response?.ok) return
+        const saved = response.data?.elements?.stamps as PlacedStamp[] | undefined
+        if (Array.isArray(saved)) {
+          placedStamps = saved
+          for (const s of placedStamps) renderStamp(s)
+        }
+      },
+    )
+  } else {
+    stampsLoaded = true
+  }
+
+  document.addEventListener('inline:stampPlace', ((e: CustomEvent<{ emoji: string }>) => {
+    pendingStampEmoji = e.detail?.emoji ?? null
+    document.body.style.cursor = 'crosshair'
+  }) as EventListener)
+
+  /* ── Screen-reader mode: speak selection / focused text via ElevenLabs ──
+   *
+   * The screen-reader toggle only *enables* the capability. Speech is never
+   * triggered just because the user highlighted or focused something — that
+   * would overlap with every other selection-driven feature (highlight,
+   * rewrite, AI, clip). Instead, the user explicitly triggers speech via:
+   *   • Alt+Shift+S keyboard shortcut (speaks the current selection)
+   *   • `inline:speakSelection` custom event (dispatched by a toolbar action)
+   *   • The per-panel "Speak" buttons in AI / Rewrite, which remain unchanged
+   *     because they call speakWithElevenLabs directly on the panel's result.
+   */
+  let screenReaderEnabled = false
+
+  chrome.storage.local.get(['inlineScreenReader'], (r) => {
+    screenReaderEnabled = r.inlineScreenReader === 'true' || r.inlineScreenReader === true
+  })
+
+  document.addEventListener('inline:screenReader', ((e: CustomEvent<{ enabled: boolean }>) => {
+    screenReaderEnabled = !!e.detail?.enabled
+    if (!screenReaderEnabled) stopSpeaking()
+  }) as EventListener)
+
+  function getFocusedOrSelectedText(): string {
+    const sel = window.getSelection()?.toString().trim()
+    if (sel) return sel
+    const active = document.activeElement as HTMLElement | null
+    if (active) {
+      if ('value' in active && typeof (active as HTMLInputElement).value === 'string') {
+        return (active as HTMLInputElement).value.trim()
+      }
+      const text = (active.innerText ?? active.textContent ?? '').trim()
+      if (text) return text.slice(0, 600)
+    }
+    return ''
+  }
+
+  function speakNow(): void {
+    if (!screenReaderEnabled) return
+    const text = getFocusedOrSelectedText()
+    if (!text) return
+    void speakWithElevenLabs(text)
+  }
+
+  document.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (!screenReaderEnabled) return
+    if (e.altKey && e.shiftKey && (e.key === 'S' || e.key === 's')) {
+      e.preventDefault()
+      speakNow()
+    }
+    if (e.key === 'Escape') stopSpeaking()
+  })
+
+  document.addEventListener('inline:speakSelection', () => { speakNow() })
+  document.addEventListener('inline:stopSpeaking', () => { stopSpeaking() })
+
+  document.addEventListener('click', (e: MouseEvent) => {
+    if (!pendingStampEmoji) return
+    const target = e.target as Element | null
+    if (target?.closest?.('#inline-extension-root')) return
+    const x = e.pageX
+    const y = e.pageY
+    const stamp: PlacedStamp = {
+      id: stampId(),
+      emoji: pendingStampEmoji,
+      x, y,
+      createdAt: Date.now(),
+    }
+    placedStamps = [...placedStamps, stamp]
+    renderStamp(stamp)
+    pendingStampEmoji = null
+    document.body.style.cursor = ''
+    if (stampsLoaded) persistStamps()
+    document.dispatchEvent(new CustomEvent('inline:stampPlaced', { detail: stamp }))
+  }, true)
 })()

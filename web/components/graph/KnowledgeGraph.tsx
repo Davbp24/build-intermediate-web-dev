@@ -5,8 +5,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import type { GraphData, GraphNode } from '@/lib/types'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Share2, RotateCcw } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { RotateCcw } from 'lucide-react'
 import { useSidebar } from '@/lib/sidebar-context'
 
 const ForceGraph2D = dynamic(
@@ -19,9 +18,9 @@ interface KnowledgeGraphProps {
 }
 
 const NODE_COLORS: Record<GraphNode['type'], string> = {
-  url:  '#6C91C2',   // Inline primary blue
-  note: '#F2D6A2',   // warm highlight
-  tag:  '#5FA8A1',   // teal accent
+  url:  '#6C91C2',
+  note: '#F2D6A2',
+  tag:  '#5FA8A1',
 }
 
 export default function KnowledgeGraph({ data }: KnowledgeGraphProps) {
@@ -34,7 +33,6 @@ export default function KnowledgeGraph({ data }: KnowledgeGraphProps) {
 
   const handleZoomFit = useCallback(() => graphRef.current?.zoomToFit(600, 60), [])
 
-  // Auto-center when sidebar collapses/expands — give the layout animation time to settle
   useEffect(() => {
     const t = setTimeout(handleZoomFit, 350)
     return () => clearTimeout(t)
@@ -47,7 +45,6 @@ export default function KnowledgeGraph({ data }: KnowledgeGraphProps) {
     const x = gNode.x ?? 0
     const y = gNode.y ?? 0
 
-    // Glow for URL nodes or hovered
     if (gNode.type === 'url' || gNode === hoveredNode) {
       ctx.beginPath()
       const gradient = ctx.createRadialGradient(x, y, 0, x, y, size * 2.5)
@@ -58,18 +55,24 @@ export default function KnowledgeGraph({ data }: KnowledgeGraphProps) {
       ctx.fill()
     }
 
-    // Node circle
     ctx.beginPath()
     ctx.arc(x, y, size, 0, 2 * Math.PI)
     ctx.fillStyle = gNode === hoveredNode ? '#ffffff' : color
     ctx.fill()
 
-    // Crisp border for all nodes
     ctx.strokeStyle = 'rgba(255,255,255,0.9)'
     ctx.lineWidth = 1.5 / globalScale
     ctx.stroke()
 
-    // Label
+    if (gNode.glyph) {
+      const glyphSize = Math.max(size * 1.2, 5 / globalScale)
+      ctx.font = `${glyphSize}px "Apple Color Emoji", "Segoe UI Emoji", system-ui`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillStyle = '#ffffff'
+      ctx.fillText(gNode.glyph, x, y)
+    }
+
     const label = gNode.label ?? ''
     const fontSize = Math.max(8 / globalScale, 3)
     ctx.font = `600 ${fontSize}px system-ui`
@@ -89,7 +92,7 @@ export default function KnowledgeGraph({ data }: KnowledgeGraphProps) {
   }, [])
 
   return (
-    <div className="relative w-full h-full bg-background overflow-hidden">
+    <div className="relative w-full h-full overflow-hidden" style={{ background: '#f8fafc' }}>
       {mounted && (
         <ForceGraph2D
           ref={graphRef}
@@ -111,48 +114,47 @@ export default function KnowledgeGraph({ data }: KnowledgeGraphProps) {
         />
       )}
 
-      {/* Fit button */}
-      <div className="absolute bottom-6 right-6 z-10">
-        <Button
-          variant="outline"
-          size="icon-sm"
-          className="bg-card/90 backdrop-blur border border-border"
-          onClick={handleZoomFit}
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-        </Button>
-      </div>
+      {/* Recenter button (bottom-right) */}
+      <button
+        type="button"
+        onClick={handleZoomFit}
+        className="absolute bottom-6 right-6 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white shadow-md transition-all hover:shadow-lg"
+        title="Fit to view"
+      >
+        <RotateCcw className="h-3.5 w-3.5 text-[#333]" />
+      </button>
 
-      {/* Legend */}
-      <div className="absolute top-4 left-4 z-10 bg-card/90 backdrop-blur border border-border rounded-lg p-3 space-y-2">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-          <Share2 className="w-3 h-3" />
-          Legend
-        </p>
+      {/* Floating legend (top-left) */}
+      <div className="absolute left-4 top-4 z-10 flex items-center gap-4 rounded-full bg-white px-4 py-2 shadow-md">
         {[
           { label: 'Website', color: '#6C91C2' },
           { label: 'Note',    color: '#F2D6A2' },
           { label: 'Tag',     color: '#5FA8A1' },
         ].map(item => (
-          <div key={item.label} className="flex items-center gap-2">
+          <div key={item.label} className="flex items-center gap-1.5">
             <div
-              className="w-2.5 h-2.5 rounded-full"
+              className="h-2.5 w-2.5 rounded-full"
               style={{ backgroundColor: item.color }}
             />
-            <span className="text-xs text-muted-foreground">{item.label}</span>
+            <span className="text-xs font-medium text-[#666]">{item.label}</span>
           </div>
         ))}
       </div>
 
       {/* Hover tooltip */}
       {hoveredNode && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 bg-card/95 backdrop-blur border border-border rounded-lg px-3 py-2 text-xs max-w-xs text-center pointer-events-none">
-          <p className="font-medium">{hoveredNode.label}</p>
+        <div className="pointer-events-none absolute bottom-6 left-1/2 z-10 -translate-x-1/2 rounded-full bg-white px-4 py-2 text-center text-xs shadow-md">
+          <p className="font-semibold text-[#222]">{hoveredNode.label}</p>
           {hoveredNode.domain && (
-            <p className="text-muted-foreground mt-0.5">{hoveredNode.domain}</p>
+            <p className="text-[#999]">{hoveredNode.domain}</p>
           )}
         </div>
       )}
+
+      {/* Node count badge (top-right) */}
+      <div className="absolute right-4 top-4 z-10 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-[#666] shadow-md">
+        {data.nodes.length} nodes &middot; {data.links.length} links
+      </div>
     </div>
   )
 }

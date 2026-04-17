@@ -1,8 +1,12 @@
 import { useState, useRef, useCallback } from 'react'
 import { wrapSelectionWithHighlight } from '../content/highlightWrap'
 import { loadSettings } from '../lib/extensionSettings'
+import { speakWithElevenLabs, stopSpeaking } from '../lib/elevenLabsTts'
 import { PANEL as C, FONT } from '../lib/extensionTheme'
 import { PROMPT_TEMPLATES } from '../lib/promptTemplates'
+import { fetchViaBackground } from '../lib/backgroundFetch'
+import { saveAIResultToHistory } from '../lib/historyApi'
+import { buildAIInsertMark } from '../lib/insertBadge'
 
 const ISparkle = () => (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="#1C1E26">
@@ -20,6 +24,18 @@ const ICopy = () => (
     <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
   </svg>
 )
+const IVolume = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#78716c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+  </svg>
+)
+const IVolumeOff = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+    <line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>
+  </svg>
+)
 
 interface AIProps {
   selectedText: string
@@ -31,24 +47,49 @@ export default function AI({ selectedText, originalRange, onClose }: AIProps) {
   const [customPrompt, setCustomPrompt] = useState('')
   const [result, setResult] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [speaking, setSpeaking] = useState(false)
+  const [lastTask, setLastTask] = useState<string>('')
+  const [lastInstruction, setLastInstruction] = useState<string | undefined>(undefined)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  function handleSpeak() {
+    if (speaking) { stopSpeaking(); setSpeaking(false); return }
+    if (!result) return
+    void speakWithElevenLabs(result, { onStart: () => setSpeaking(true), onEnd: () => setSpeaking(false) })
+  }
 
   const runTask = useCallback(async (task: string, instruction?: string) => {
     wrapSelectionWithHighlight(task)
     setLoading(true)
     setResult(null)
+    setLastTask(task)
+    setLastInstruction(instruction)
     try {
       const text = selectedText.slice(0, 8000)
       const { apiBaseUrl, accessToken } = await loadSettings()
       const h: Record<string, string> = { 'Content-Type': 'application/json' }
       if (accessToken) h.Authorization = `Bearer ${accessToken}`
-      const res = await fetch(`${apiBaseUrl}/api/ai/extension-light`, {
+      const res = await fetchViaBackground(`${apiBaseUrl}/api/ai/extension-light`, {
         method: 'POST', headers: h,
         body: JSON.stringify({ task, text, instruction }),
       })
       if (res.ok) {
-        const j = await res.json() as { result?: string }
-        setResult(j.result ?? 'No result returned.')
+        const j = await res.json<{ result?: string }>()
+        const output = j.result ?? 'No result returned.'
+        setResult(output)
+        if (j.result) {
+          const kindMap: Record<string, 'ai-rephrase' | 'ai-shorten' | 'ai-summarize' | 'ai-rewrite' | 'ai-custom'> = {
+            rephrase:  'ai-rephrase',
+            shorten:   'ai-shorten',
+            summarize: 'ai-summarize',
+            rewrite:   instruction ? 'ai-custom' : 'ai-rewrite',
+          }
+          void saveAIResultToHistory({
+            kind: kindMap[task] ?? 'ai-custom',
+            selection: text,
+            result: output,
+          })
+        }
       } else {
         setResult('AI request failed. Check settings.')
       }
@@ -63,7 +104,8 @@ export default function AI({ selectedText, originalRange, onClose }: AIProps) {
     if (!result || !originalRange) return
     try {
       originalRange.deleteContents()
-      originalRange.insertNode(document.createTextNode(result))
+      const mark = buildAIInsertMark(result, lastTask, lastInstruction)
+      originalRange.insertNode(mark)
     } catch { /* range may be invalid if user navigated away */ }
     onClose()
   }
@@ -90,7 +132,7 @@ export default function AI({ selectedText, originalRange, onClose }: AIProps) {
             <ISparkle />
             <span style={{ fontSize: 13, fontWeight: 500, color: C.accent, letterSpacing: '-0.02em' }}>Ask AI</span>
           </div>
-          <button type="button" onClick={onClose} style={btnIcon}><IClose /></button>
+          <button type="button" onClick={onClose} title="Close" aria-label="Close" style={btnIcon}><IClose /></button>
         </div>
 
         {/* Actions */}
@@ -98,6 +140,8 @@ export default function AI({ selectedText, originalRange, onClose }: AIProps) {
           {(['Rephrase', 'Shorten', 'Summarize'] as const).map(a => (
             <button key={a} type="button"
               onClick={() => void runTask(a.toLowerCase())}
+              title={a}
+              aria-label={a}
               style={{
                 display: 'block', width: '100%', textAlign: 'left',
                 padding: '11px 14px', border: 'none', borderRadius: C.radiusPill,
@@ -117,6 +161,8 @@ export default function AI({ selectedText, originalRange, onClose }: AIProps) {
           {PROMPT_TEMPLATES.map(t => (
             <button key={t.id} type="button"
               onClick={() => void runTask('rewrite', t.prompt)}
+              title={t.label}
+              aria-label={t.label}
               style={{
                 padding: '6px 12px', borderRadius: C.radiusPill,
                 border: `1px solid ${C.border}`, background: C.surfaceBubble,
@@ -167,7 +213,7 @@ export default function AI({ selectedText, originalRange, onClose }: AIProps) {
           <ISparkle />
           <span style={{ fontSize: 13, fontWeight: 500, color: C.accent, letterSpacing: '-0.02em' }}>Ask AI</span>
         </div>
-        <button type="button" onClick={onClose} style={btnIcon}><IClose /></button>
+        <button type="button" onClick={onClose} title="Close" aria-label="Close" style={btnIcon}><IClose /></button>
       </div>
 
       {/* Result body */}
@@ -186,12 +232,13 @@ export default function AI({ selectedText, originalRange, onClose }: AIProps) {
         {/* Action row */}
         {!loading && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14, alignItems: 'center' }}>
-            <button type="button" onClick={() => setResult(null)} style={pillBtn}>Back</button>
-            <button type="button" onClick={handleInsert} style={{
+            <button type="button" onClick={() => setResult(null)} title="Back" aria-label="Back" style={pillBtn}>Back</button>
+            <button type="button" onClick={handleInsert} title="Insert into page" aria-label="Insert into page" style={{
               ...pillBtn, background: C.accent, color: '#fff', borderColor: C.accent, fontWeight: 600,
               boxShadow: C.shadowSoft,
             }}>Insert</button>
-            <button type="button" onClick={handleCopy} style={{ ...btnIcon, marginLeft: 'auto' }}><ICopy /></button>
+            <button type="button" onClick={handleSpeak} title={speaking ? 'Stop speaking' : 'Speak'} aria-label={speaking ? 'Stop speaking' : 'Speak'} style={{ ...btnIcon, marginLeft: 'auto' }}>{speaking ? <IVolumeOff /> : <IVolume />}</button>
+            <button type="button" onClick={handleCopy} title="Copy" aria-label="Copy" style={btnIcon}><ICopy /></button>
           </div>
         )}
       </div>

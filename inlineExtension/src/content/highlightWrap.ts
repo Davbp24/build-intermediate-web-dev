@@ -7,11 +7,16 @@ const ACTION_META: Record<string, { bg: string; title: string }> = {
   }
   
   interface SavedHighlight {
+    id: string
     text: string
     action: string
     bg: string
     title: string
     timestamp: number
+  }
+
+  function generateHighlightId(): string {
+    return `hl-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
   }
   
   function highlightStorageKey(): string {
@@ -38,33 +43,44 @@ const ACTION_META: Record<string, { bg: string; title: string }> = {
     } catch { /* ignore in sandboxed contexts */ }
 
     try {
+      if (!chrome.runtime?.id) return
       const all = loadSavedHighlights()
       chrome.runtime.sendMessage(
         {
           type: 'SAVE_ANNOTATIONS',
-          payload: { pageUrl: window.location.href, featureKey: 'highlights', data: all },
+          payload: {
+            pageUrl: window.location.href,
+            featureKey: 'highlights',
+            data: all,
+            pageTitle: document.title,
+            domain: window.location.hostname,
+          },
         },
         () => { if (chrome.runtime.lastError) { /* ignore */ } },
       )
     } catch { /* extension context unavailable */ }
   }
-  
-  export function wrapSelectionWithHighlight(action: string): { text: string; title: string } | null {
+
+  export function wrapSelectionWithHighlight(
+    action: string,
+    colorOverride?: string,
+  ): { text: string; title: string } | null {
   const sel = window.getSelection()
   if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null
   const text = sel.toString()
   if (!text.trim()) return null
-  
+
   const range = sel.getRangeAt(0)
   const meta = ACTION_META[action] ?? { bg: 'rgba(226,232,240,0.95)', title: 'Highlighted by Inline' }
-  
+  const bg = colorOverride ?? meta.bg
+
   const span = document.createElement('span')
   span.setAttribute('data-inline-highlight', action)
-  span.style.backgroundColor = meta.bg
+  span.style.backgroundColor = bg
   span.style.borderRadius = '4px'
   span.style.padding = '0 3px'
   span.title = meta.title
-  
+
   try {
   range.surroundContents(span)
   } catch {
@@ -72,17 +88,18 @@ const ACTION_META: Record<string, { bg: string; title: string }> = {
   span.appendChild(contents)
   range.insertNode(span)
   }
-  
+
   sel.removeAllRanges()
-  
+
     saveHighlight({
+      id: generateHighlightId(),
       text: text.trim(),
       action,
-      bg: meta.bg,
+      bg,
       title: meta.title,
       timestamp: Date.now(),
     })
-  
+
   return { text, title: meta.title }
   }
   
@@ -127,6 +144,7 @@ const ACTION_META: Record<string, { bg: string; title: string }> = {
     if (local.length > 0) applyHighlights(local)
 
     try {
+      if (!chrome.runtime?.id) return
       chrome.runtime.sendMessage(
         { type: 'LOAD_ANNOTATIONS', payload: { pageUrl: window.location.href } },
         (response) => {

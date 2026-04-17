@@ -36,8 +36,8 @@ export default function CaptureChart({ data }: CaptureChartProps) {
         <p className="text-sm font-semibold text-foreground">Capture Volume</p>
         <p className="mt-0.5 text-xs text-muted-foreground">Notes captured per day</p>
       </div>
-      <div className="h-48">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="relative h-48">
+        <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
           <AreaChart data={formatted} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
             <defs>
               <linearGradient id="captureGradient" x1="0" y1="0" x2="0" y2="1">

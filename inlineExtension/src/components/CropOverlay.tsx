@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { PANEL as C, FONT } from '../lib/extensionTheme'
 import { loadSettings } from '../lib/extensionSettings'
+import { fetchViaBackground } from '../lib/backgroundFetch'
 
 interface CropOverlayProps {
   screenshot: string
@@ -75,7 +76,7 @@ export default function CropOverlay({ screenshot, onClose }: CropOverlayProps) {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (accessToken) headers.Authorization = `Bearer ${accessToken}`
 
-      const res = await fetch(`${apiBaseUrl}/api/ai/extension-light`, {
+      const res = await fetchViaBackground(`${apiBaseUrl}/api/ai/extension-light`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -86,7 +87,7 @@ export default function CropOverlay({ screenshot, onClose }: CropOverlayProps) {
       })
 
       if (res.ok) {
-        const json = await res.json() as { result?: string }
+        const json = await res.json<{ result?: string }>()
         setResult(json.result ?? 'No result returned.')
       } else {
         setResult('AI analysis failed. Check your API settings.')

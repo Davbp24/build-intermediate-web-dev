@@ -41,15 +41,32 @@ interface NotesProps {
   onClose: () => void
   initialX?: number
   initialY?: number
+  initialW?: number
+  initialH?: number
+  initialContent?: string
+  initialPaperStyle?: PaperStyle
+  onUpdate?: (patch: {
+    x?: number; y?: number; w?: number; h?: number;
+    content?: string; paperStyle?: PaperStyle;
+  }) => void
 }
 
-export default function Notes({ onClose, initialX = 100, initialY = 100 }: NotesProps) {
+export default function Notes({
+  onClose,
+  initialX = 100,
+  initialY = 100,
+  initialW = 320,
+  initialH = 260,
+  initialContent = '',
+  initialPaperStyle = 'Plain',
+  onUpdate,
+}: NotesProps) {
   const [headingLevel, setHeadingLevel] = useState<HeadingLevel>('Normal')
   const [showHeadingMenu, setShowHeadingMenu] = useState(false)
-  const [paperStyle, setPaperStyle] = useState<PaperStyle>('Plain')
+  const [paperStyle, setPaperStyle] = useState<PaperStyle>(initialPaperStyle)
   const [showPaperMenu, setShowPaperMenu] = useState(false)
   const [pos, setPos] = useState({ x: initialX, y: initialY })
-  const [size, setSize] = useState({ w: 320, h: 260 })
+  const [size, setSize] = useState({ w: initialW, h: initialH })
   const bodyRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{ ox: number; oy: number } | null>(null)
 
@@ -69,20 +86,32 @@ export default function Notes({ onClose, initialX = 100, initialY = 100 }: Notes
     setPos({ x: e.clientX - dragRef.current.ox, y: e.clientY - dragRef.current.oy })
   }, [])
 
-  const onPointerUp = useCallback(() => { dragRef.current = null }, [])
+  const onPointerUp = useCallback(() => {
+    if (!dragRef.current) return
+    dragRef.current = null
+    onUpdate?.({ x: pos.x, y: pos.y })
+  }, [onUpdate, pos])
 
   /* ─── Resize ─── */
   const onResizeDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation()
     const sx = e.clientX, sy = e.clientY, sw = size.w, sh = size.h
-    const move = (ev: MouseEvent) => setSize({
-      w: Math.max(240, sw + ev.clientX - sx),
-      h: Math.max(180, sh + ev.clientY - sy),
-    })
-    const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up) }
+    let latest = { w: sw, h: sh }
+    const move = (ev: MouseEvent) => {
+      latest = {
+        w: Math.max(240, sw + ev.clientX - sx),
+        h: Math.max(180, sh + ev.clientY - sy),
+      }
+      setSize(latest)
+    }
+    const up = () => {
+      window.removeEventListener('mousemove', move)
+      window.removeEventListener('mouseup', up)
+      onUpdate?.({ w: latest.w, h: latest.h })
+    }
     window.addEventListener('mousemove', move)
     window.addEventListener('mouseup', up)
-  }, [size])
+  }, [size, onUpdate])
 
   /* ─── Formatting commands ─── */
   function fmt(cmd: string) {
@@ -99,7 +128,22 @@ export default function Notes({ onClose, initialX = 100, initialY = 100 }: Notes
     else document.execCommand('formatBlock', false, 'div')
   }
 
-  useEffect(() => { bodyRef.current?.focus() }, [])
+  useEffect(() => {
+    if (bodyRef.current && initialContent) {
+      bodyRef.current.innerHTML = initialContent
+    }
+    bodyRef.current?.focus()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const contentTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const onBodyInput = useCallback(() => {
+    if (!onUpdate) return
+    if (contentTimer.current) clearTimeout(contentTimer.current)
+    contentTimer.current = setTimeout(() => {
+      onUpdate({ content: bodyRef.current?.innerHTML ?? '' })
+    }, 400)
+  }, [onUpdate])
 
   return (
     <div style={{
@@ -187,7 +231,7 @@ export default function Notes({ onClose, initialX = 100, initialY = 100 }: Notes
               {(['Plain', 'Ruled', 'Grid', 'Dotted'] as const).map(p => (
                 <button key={p}
                   onPointerDown={e => e.stopPropagation()}
-                  onClick={() => { setPaperStyle(p); setShowPaperMenu(false) }}
+                  onClick={() => { setPaperStyle(p); setShowPaperMenu(false); onUpdate?.({ paperStyle: p }) }}
                   style={{
                     display: 'block', width: '100%', textAlign: 'left',
                     padding: '7px 12px', border: 'none', borderRadius: 0,
@@ -238,6 +282,7 @@ export default function Notes({ onClose, initialX = 100, initialY = 100 }: Notes
         ref={bodyRef}
         contentEditable
         suppressContentEditableWarning
+        onInput={onBodyInput}
         data-placeholder="Start typing…"
         style={{
           flex: 1, padding: '10px 14px', fontSize: 13, lineHeight: 1.65,

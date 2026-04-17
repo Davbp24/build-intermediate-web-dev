@@ -678,6 +678,18 @@ export default function WorkspaceSettingsPage() {
           {workspaceName} Settings
         </h1>
 
+        <p className="mt-4 rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm leading-relaxed text-muted-foreground">
+          <span className="font-medium text-foreground">AI &amp; Voice, ElevenLabs, and the browser extension</span>{' '}
+          are configured in{' '}
+          <Link
+            href="/app/settings?tab=ai-voice"
+            className="font-medium text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary"
+          >
+            Account settings → AI &amp; Voice
+          </Link>
+          . This page only covers options for <em>this workspace</em> (folders, members, etc.).
+        </p>
+
         <nav
           className="mt-6 flex gap-1 overflow-x-auto scrollbar-minimal border-b border-border -mb-px pb-px"
           aria-label="Workspace settings sections"
@@ -706,7 +718,7 @@ export default function WorkspaceSettingsPage() {
           })}
         </nav>
 
-        <div className="mt-8 max-w-2xl space-y-2">
+        <div className="mt-8 w-full space-y-2">
           <h2 className="text-base font-semibold text-foreground">
             {WS_TABS.find(t => t.id === activeTab)?.label}
           </h2>
@@ -715,7 +727,7 @@ export default function WorkspaceSettingsPage() {
           )}
         </div>
 
-        <div className="max-w-2xl mt-6 space-y-8">{TabContent[activeTab]}</div>
+        <div className="mt-6 w-full space-y-8">{TabContent[activeTab]}</div>
       </div>
     </>
   )

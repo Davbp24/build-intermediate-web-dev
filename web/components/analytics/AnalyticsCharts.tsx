@@ -10,7 +10,10 @@ import {
 } from 'recharts'
 import type { DashboardStats } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { TrendingUp, TrendingDown, BookMarked, Globe, BrainCircuit, Flame } from 'lucide-react'
+import {
+  TrendingUp, TrendingDown, BookMarked, Globe, BrainCircuit, Flame,
+  Pencil, Highlighter, Anchor,
+} from 'lucide-react'
 
 interface TimeSeries { date: string; count: number; ai: number }
 interface Props {
@@ -29,7 +32,19 @@ const CHART_COLORS = {
   text:     '#9B9A97',
 }
 
-const NOTE_TYPE_COLORS = ['#4B83C4', '#9065B0', '#0F7B6C']
+const NOTE_TYPE_PALETTE: Record<string, { label: string; color: string }> = {
+  text:         { label: 'Text',         color: '#4B83C4' },
+  canvas:       { label: 'Canvas',       color: '#9065B0' },
+  'ai-summary': { label: 'AI Summary',   color: '#0F7B6C' },
+  sticky:       { label: 'Sticky',       color: '#CB912F' },
+  anchor:       { label: 'Anchor',       color: '#B8651B' },
+  drawing:      { label: 'Drawing',      color: '#7C3AED' },
+  handwriting:  { label: 'Handwriting',  color: '#C026D3' },
+  highlight:    { label: 'Highlight',    color: '#65A30D' },
+  clip:         { label: 'Clip',         color: '#0EA5E9' },
+  stamp:        { label: 'Stamp',        color: '#E11D48' },
+  'paper-note': { label: 'Paper note',   color: '#EA580C' },
+}
 
 type Period = '7d' | '30d'
 
@@ -110,12 +125,22 @@ export default function AnalyticsCharts({ stats, timeSeries30, timeSeries7 }: Pr
     label: new Date(d.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
   })), [series])
 
-  // Note type distribution from topDomains proportionally  
-  const noteTypeData = [
-    { name: 'Text',       value: Math.max(1, Math.floor(stats.totalNotes * 0.55)) },
-    { name: 'Canvas',     value: Math.max(1, Math.floor(stats.totalNotes * 0.25)) },
-    { name: 'AI Summary', value: Math.max(1, Math.floor(stats.totalNotes * 0.20)) },
-  ]
+  const noteTypeData = useMemo(() => {
+    const tc = stats.typeCounts ?? {}
+    const entries = Object.entries(tc) as [string, number][]
+    if (entries.length === 0) {
+      // Fall back to a neutral single bucket if the DB has no data yet.
+      return [{ name: 'Notes', value: Math.max(1, stats.totalNotes), color: NOTE_TYPE_PALETTE.text.color }]
+    }
+    return entries
+      .filter(([, v]) => v > 0)
+      .sort((a, b) => b[1] - a[1])
+      .map(([type, value]) => ({
+        name: NOTE_TYPE_PALETTE[type]?.label ?? type,
+        value,
+        color: NOTE_TYPE_PALETTE[type]?.color ?? '#6B7280',
+      }))
+  }, [stats.typeCounts, stats.totalNotes])
 
   // Domain data from topDomains
   const domainData = stats.topDomains.slice(0, 8).map(d => ({
@@ -153,6 +178,13 @@ export default function AnalyticsCharts({ stats, timeSeries30, timeSeries7 }: Pr
         <StatChip label="Domains Tracked" value={stats.totalDomains}    icon={Globe}        iconColor="text-sky-500" delta={stats.notesThisWeekDelta} />
         <StatChip label="AI Queries"      value={stats.aiQueriesRun}    icon={BrainCircuit} iconColor="text-emerald-500" />
         <StatChip label="Day Streak"      value={`${stats.streakDays}d`} icon={Flame}       iconColor="text-amber-500" />
+      </div>
+
+      {/* ── Activity type KPI row ── */}
+      <div className="grid grid-cols-3 gap-4">
+        <StatChip label="Drawings"   value={stats.typeCounts?.drawing ?? 0}   icon={Pencil}      iconColor="text-violet-500" />
+        <StatChip label="Highlights" value={stats.typeCounts?.highlight ?? 0} icon={Highlighter} iconColor="text-lime-600" />
+        <StatChip label="Anchors"    value={stats.typeCounts?.anchor ?? 0}    icon={Anchor}      iconColor="text-amber-600" />
       </div>
 
       {/* ── Capture volume chart ── */}
@@ -221,17 +253,17 @@ export default function AnalyticsCharts({ stats, timeSeries30, timeSeries7 }: Pr
                     paddingAngle={3}
                     dataKey="value"
                   >
-                    {noteTypeData.map((_, i) => (
-                      <Cell key={i} fill={NOTE_TYPE_COLORS[i]} />
+                    {noteTypeData.map((d, i) => (
+                      <Cell key={i} fill={d.color} />
                     ))}
                   </Pie>
                   <Tooltip content={<CustomTooltip />} />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="space-y-3">
-                {noteTypeData.map((item, i) => (
+              <div className="space-y-3 overflow-y-auto max-h-[180px] pr-1">
+                {noteTypeData.map((item) => (
                   <div key={item.name} className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full shrink-0" style={{ background: NOTE_TYPE_COLORS[i] }} />
+                    <span className="w-3 h-3 rounded-full shrink-0" style={{ background: item.color }} />
                     <div>
                       <p className="text-xs font-semibold text-slate-700">{item.name}</p>
                       <p className="text-xs text-slate-400">{item.value} notes</p>

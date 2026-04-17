@@ -3,10 +3,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, Send, Loader2, Bot, User, ChevronDown } from 'lucide-react'
+import { Sparkles, Send, Loader2, Bot, User, ChevronDown, Volume2, VolumeX } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useChatPanel } from '@/lib/chat-panel-context'
 import { loadFolderDocuments } from '@/lib/workspace-library'
+import { normalizeInlineVoiceId } from '@/lib/inlineVoicePresets'
 
 const EASE = [0.22, 1, 0.36, 1] as const
 const PANEL_DURATION = 0.32
@@ -14,6 +15,59 @@ const PANEL_DURATION = 0.32
 interface Message {
   role: 'user' | 'assistant'
   content: string
+}
+
+let currentChatAudio: HTMLAudioElement | null = null
+
+async function speakViaTts(text: string, onEnd?: () => void): Promise<void> {
+  if (currentChatAudio) { currentChatAudio.pause(); currentChatAudio = null }
+
+  const voiceId =
+    typeof window !== 'undefined'
+      ? normalizeInlineVoiceId(localStorage.getItem('inline_voice_id'))
+      : normalizeInlineVoiceId(null)
+  const elevenKey = typeof window !== 'undefined' ? localStorage.getItem('inline_elevenlabs_key') || '' : ''
+  const stability = typeof window !== 'undefined'
+    ? parseFloat(localStorage.getItem('inline_voice_stability') || '0.5')
+    : 0.5
+  const similarityBoost = typeof window !== 'undefined'
+    ? parseFloat(localStorage.getItem('inline_voice_similarity') || '0.75')
+    : 0.75
+
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (elevenKey) headers['x-elevenlabs-key'] = elevenKey
+
+  try {
+    const res = await fetch('/api/tts', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        text: text.slice(0, 2000),
+        voiceId,
+        stability: Number.isFinite(stability) ? stability : 0.5,
+        similarityBoost: Number.isFinite(similarityBoost) ? similarityBoost : 0.75,
+      }),
+    })
+
+    if (!res.ok) {
+      onEnd?.()
+      return
+    }
+
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const audio = new Audio(url)
+    currentChatAudio = audio
+    audio.onended = () => { URL.revokeObjectURL(url); currentChatAudio = null; onEnd?.() }
+    audio.onerror = () => { URL.revokeObjectURL(url); currentChatAudio = null; onEnd?.() }
+    audio.play()
+  } catch {
+    onEnd?.()
+  }
+}
+
+function stopChatSpeaking() {
+  if (currentChatAudio) { currentChatAudio.pause(); currentChatAudio = null }
 }
 
 function getWsId(pathname: string): string {
@@ -38,8 +92,28 @@ export default function WorkspaceChatPanel() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [voiceMode, setVoiceMode] = useState(() =>
+    typeof window !== 'undefined' ? localStorage.getItem('inline_voice_chat') === 'true' : false,
+  )
+  const [speakingIdx, setSpeakingIdx] = useState<number | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const toggleVoiceMode = useCallback(() => {
+    setVoiceMode(prev => {
+      const next = !prev
+      localStorage.setItem('inline_voice_chat', String(next))
+      if (!next) { stopChatSpeaking(); setSpeakingIdx(null) }
+      return next
+    })
+  }, [])
+
+  function handleSpeakMessage(idx: number, content: string) {
+    if (speakingIdx === idx) { stopChatSpeaking(); setSpeakingIdx(null); return }
+    stopChatSpeaking()
+    setSpeakingIdx(idx)
+    void speakViaTts(content, () => setSpeakingIdx(null))
+  }
 
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 100)
@@ -114,12 +188,18 @@ export default function WorkspaceChatPanel() {
           return next
         })
       }
+
+      if (voiceMode && accumulated) {
+        const msgIdx = messages.length + 1
+        setSpeakingIdx(msgIdx)
+        void speakViaTts(accumulated, () => setSpeakingIdx(null))
+      }
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Network error.' }])
     } finally {
       setLoading(false)
     }
-  }, [input, loading, wsId])
+  }, [input, loading, wsId, voiceMode, messages.length])
 
   function handleKey(e: React.KeyboardEvent) {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -151,17 +231,31 @@ export default function WorkspaceChatPanel() {
                   <Bot className="h-3.5 w-3.5 text-[#1C1E26]" />
                 </div>
                 <span className="truncate text-xs font-semibold tracking-tight text-foreground">
-                  Workspace AI
+                  Inline
                 </span>
                 <span className="shrink-0 rounded-md bg-white/80 px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground ring-1 ring-border/60">
                   {wsId}
                 </span>
               </div>
               <div className="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  onClick={toggleVoiceMode}
+                  className={cn(
+                    'flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg transition-colors',
+                    voiceMode
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-white/80 hover:text-foreground',
+                  )}
+                  aria-label={voiceMode ? 'Disable voice replies' : 'Enable voice replies'}
+                  title={voiceMode ? 'Voice replies on' : 'Voice replies off'}
+                >
+                  {voiceMode ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+                </button>
                 {messages.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => setMessages([])}
+                    onClick={() => { setMessages([]); stopChatSpeaking(); setSpeakingIdx(null) }}
                     className="cursor-pointer rounded-md px-2 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-white/80 hover:text-foreground"
                   >
                     Clear
@@ -185,11 +279,13 @@ export default function WorkspaceChatPanel() {
               {messages.length === 0 && (
                 <div className="flex flex-col items-center gap-2 py-6 text-center">
                   <Sparkles className="h-6 w-6 text-muted-foreground/40" />
-                  <p className="text-xs text-muted-foreground">Ask anything about your captured notes</p>
+                  <p className="text-xs text-muted-foreground">
+                    Ask about your web captures, highlights, and library — the same context you saved on each page.
+                  </p>
                   {[
-                    'What did I save about React hooks?',
-                    'Summarize my recent captures',
-                    'What domains do I visit most?',
+                    'What did I clip or highlight this week?',
+                    'Summarize themes across my recent captures',
+                    'Which sites have the most of my annotations?',
                   ].map(s => (
                     <button
                       key={s}
@@ -225,20 +321,37 @@ export default function WorkspaceChatPanel() {
                       <Bot className="h-2.5 w-2.5 text-muted-foreground" />
                     )}
                   </div>
-                  <div
-                    className={cn(
-                      'max-w-[82%] rounded-xl px-3 py-2 text-xs leading-relaxed',
-                      m.role === 'user'
-                        ? 'rounded-tr-sm bg-primary text-primary-foreground'
-                        : 'rounded-tl-sm border border-border bg-muted/60 text-foreground',
+                  <div className="group/msg relative">
+                    <div
+                      className={cn(
+                        'max-w-[82%] rounded-xl px-3 py-2 text-xs leading-relaxed',
+                        m.role === 'user'
+                          ? 'rounded-tr-sm bg-primary text-primary-foreground'
+                          : 'rounded-tl-sm border border-border bg-muted/60 text-foreground',
+                      )}
+                    >
+                      {m.content ||
+                        (loading && i === messages.length - 1 ? (
+                          <span className="animate-pulse opacity-60">…</span>
+                        ) : (
+                          '…'
+                        ))}
+                    </div>
+                    {m.role === 'assistant' && m.content && !loading && (
+                      <button
+                        type="button"
+                        onClick={() => handleSpeakMessage(i, m.content)}
+                        className={cn(
+                          'absolute -bottom-1 -right-1 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground opacity-0 shadow-sm transition-opacity group-hover/msg:opacity-100',
+                          speakingIdx === i && 'opacity-100 text-primary',
+                        )}
+                        title={speakingIdx === i ? 'Stop speaking' : 'Read aloud'}
+                      >
+                        {speakingIdx === i
+                          ? <VolumeX className="h-2.5 w-2.5" />
+                          : <Volume2 className="h-2.5 w-2.5" />}
+                      </button>
                     )}
-                  >
-                    {m.content ||
-                      (loading && i === messages.length - 1 ? (
-                        <span className="animate-pulse opacity-60">…</span>
-                      ) : (
-                        '…'
-                      ))}
                   </div>
                 </div>
               ))}
@@ -269,10 +382,10 @@ export default function WorkspaceChatPanel() {
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKey}
           onFocus={() => !open && setOpen(true)}
-          placeholder="Ask your workspace…"
+          placeholder="Ask Inline…"
           className="flex-1 border-none bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/70"
           disabled={loading}
-          aria-label="Workspace AI message"
+          aria-label="Message Inline assistant"
         />
         <div className="flex shrink-0 items-center gap-1.5">
           {open && input.trim() && (
@@ -292,7 +405,7 @@ export default function WorkspaceChatPanel() {
           {!open && (
             <span
               className="hidden items-center gap-0.5 text-[10px] text-muted-foreground sm:inline-flex"
-              title={isApple ? 'Open workspace AI (⌘⇧L)' : 'Open workspace AI (Ctrl+Shift+L)'}
+              title={isApple ? 'Open Inline (⌘⇧L)' : 'Open Inline (Ctrl+Shift+L)'}
             >
               <kbd className="rounded border border-border bg-muted/80 px-1 py-px font-mono text-[10px] text-muted-foreground">
                 {isApple ? '⌘' : 'Ctrl'}

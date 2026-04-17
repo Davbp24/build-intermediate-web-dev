@@ -8,12 +8,15 @@ const IClose = () => (
   </svg>
 )
 
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label?: string }) {
+  const title = label ? `${checked ? 'Hide' : 'Show'} ${label}` : undefined
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={title}
+      title={title}
       onClick={() => onChange(!checked)}
       style={{
         position: 'relative', width: 48, height: 28, borderRadius: C.radiusPill,
@@ -78,7 +81,7 @@ export default function Layers({ onClose }: LayersProps) {
         <span style={{ fontSize: 13, fontWeight: 500, color: C.accent, letterSpacing: '-0.01em' }}>
           Layers
         </span>
-        <button type="button" onClick={onClose} style={{
+        <button type="button" onClick={onClose} title="Close" aria-label="Close" style={{
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           width: 30, height: 30, border: 'none', borderRadius: C.radiusSm,
           background: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: 0,
@@ -96,7 +99,7 @@ export default function Layers({ onClose }: LayersProps) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 12, fontWeight: 500, color: C.text }}>{row.label}</span>
             </div>
-            <Toggle checked={layers[row.key]} onChange={v => handleToggle(row.key, v)} />
+            <Toggle checked={layers[row.key]} onChange={v => handleToggle(row.key, v)} label={row.label} />
           </div>
         ))}
       </div>

@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { PANEL as C, FONT } from '../lib/extensionTheme'
+import { wrapSelectionWithHighlight } from '../content/highlightWrap'
 
 const IHighlight = () => (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="#1C1E26">
@@ -28,24 +29,7 @@ export default function Highlighter({ onClose }: HighlighterProps) {
 
   const applyHighlight = useCallback((color: string) => {
     setActive(color)
-    const sel = window.getSelection()
-    if (!sel || sel.isCollapsed || !sel.toString().trim()) return
-
-    const range = sel.getRangeAt(0)
-    const span = document.createElement('span')
-    span.setAttribute('data-inline-highlight', 'color')
-    span.style.backgroundColor = color
-    span.style.borderRadius = '6px'
-    span.style.padding = '0 2px'
-    span.title = 'Highlighted by Inline'
-    try {
-      range.surroundContents(span)
-    } catch {
-      const contents = range.extractContents()
-      span.appendChild(contents)
-      range.insertNode(span)
-    }
-    sel.removeAllRanges()
+    wrapSelectionWithHighlight('color', color)
   }, [])
 
   return (
@@ -64,7 +48,7 @@ export default function Highlighter({ onClose }: HighlighterProps) {
           <IHighlight />
           <span style={{ fontSize: 13, fontWeight: 500, color: C.accent, letterSpacing: '-0.02em' }}>Highlighter</span>
         </div>
-        <button type="button" onClick={onClose} style={btnIcon}><IClose /></button>
+        <button type="button" onClick={onClose} title="Close" aria-label="Close" style={btnIcon}><IClose /></button>
       </div>
 
       {/* Color grid */}
@@ -76,6 +60,8 @@ export default function Highlighter({ onClose }: HighlighterProps) {
           <button
             key={color} type="button"
             onClick={() => applyHighlight(color)}
+            title={`Highlight ${color}`}
+            aria-label={`Highlight ${color}`}
             style={{
               width: 32, height: 32, borderRadius: 12,
               background: color, cursor: 'pointer',

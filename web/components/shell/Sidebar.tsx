@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import {
   LayoutDashboard, Clock, Map, Share2, Settings, LogOut,
   Search, Plus, UserPlus, Zap, Megaphone, Package, TrendingUp,
-  FolderKanban, Lightbulb, Star, X, Check, PanelLeftClose, Activity,
+  FolderKanban, Lightbulb, Star, X, Check, PanelLeftClose,
   ChevronDown, BarChart2, Folder, FolderPlus, ChevronRight,
   FileText, FilePlus,
 } from 'lucide-react'
@@ -389,7 +389,7 @@ function SidebarFolderNode({
 // ---------------------------------------------------------------------------
 export default function Sidebar() {
   const router = useRouter()
-  const { collapsed, setCollapsed, rightPanelOpen, toggleRightPanel } = useSidebar()
+  const { collapsed, setCollapsed } = useSidebar()
   const [workspaces,         setWorkspaces]         = useState<WorkspaceItem[]>(DEFAULT_WORKSPACES)
   const [favorites,          setFavorites]          = useState<string[]>([])
   const [folders,            setFolders]            = useState<WorkspaceFolder[]>([])
@@ -552,51 +552,38 @@ export default function Sidebar() {
         style={{ willChange: 'width' }}
         className="relative h-screen flex flex-col bg-[#FDFBF7] border-r border-stone-200/60 overflow-hidden shrink-0 select-none"
       >
-        {/* ── Logo + collapse ── */}
-        <div className={cn(
-          'h-[52px] flex items-center border-b border-stone-200 shrink-0',
-          collapsed ? 'justify-center px-0' : 'px-3 gap-2',
-        )}>
-          {/* Logo — fades out when collapsed via CSS transition */}
-          <div
-            className="flex-1 min-w-0 overflow-hidden transition-[opacity,max-width] duration-[220ms] ease-[cubic-bezier(.4,0,.2,1)]"
-            style={{ maxWidth: collapsed ? 0 : 180, opacity: collapsed ? 0 : 1, pointerEvents: collapsed ? 'none' : undefined }}
+        {/* ── Logo + sidebar collapse only (activity panel toggle lives on main content) ── */}
+        <div
+          className={cn(
+            'h-[52px] flex shrink-0 items-center border-b border-stone-200',
+            collapsed ? 'justify-center px-0' : 'gap-2 px-3',
+          )}
+        >
+          {!collapsed && (
+            <div className="min-w-0 flex-1 overflow-hidden transition-[opacity,max-width] duration-[220ms] ease-[cubic-bezier(.4,0,.2,1)]">
+              <Link href="/" className="flex cursor-pointer items-center gap-2 transition-opacity hover:opacity-80">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#1C1E26]">
+                  <span className="block h-4 w-1 -rotate-12 rounded-full bg-white" />
+                </div>
+                <span className="whitespace-nowrap text-[18px] font-bold tracking-tight text-stone-800">
+                  inline
+                </span>
+              </Link>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setCollapsed(!collapsed)}
+            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-700"
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer">
-              <div className="w-7 h-7 rounded-lg bg-[#1C1E26] flex items-center justify-center shrink-0">
-                <span className="block h-4 w-1 rounded-full bg-white -rotate-12" />
-              </div>
-              <span className="font-bold text-[14px] tracking-tight whitespace-nowrap text-stone-800">
-                inline
-              </span>
-            </Link>
-          </div>
-
-          <div className="flex items-center gap-0.5 shrink-0">
-            {/* Activity / Insights panel toggle */}
-            <button
-              onClick={toggleRightPanel}
-              className={cn(
-                'w-8 h-8 flex items-center justify-center rounded-md transition-colors shrink-0 cursor-pointer',
-                rightPanelOpen
-                  ? 'text-stone-700 bg-stone-100'
-                  : 'text-stone-400 hover:text-stone-700 hover:bg-stone-100',
-              )}
-              title={rightPanelOpen ? 'Close activity panel' : 'Open activity panel'}
+            <motion.div
+              animate={{ rotate: collapsed ? 180 : 0 }}
+              transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
             >
-              <Activity className="w-4 h-4" />
-            </button>
-            {/* Collapse / expand toggle */}
-            <button
-              onClick={() => setCollapsed(!collapsed)}
-              className="w-8 h-8 flex items-center justify-center rounded-md text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors shrink-0 cursor-pointer"
-              title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            >
-              <motion.div animate={{ rotate: collapsed ? 180 : 0 }} transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}>
-                <PanelLeftClose className="w-4 h-4" />
-              </motion.div>
-            </button>
-          </div>
+              <PanelLeftClose className="h-4 w-4" />
+            </motion.div>
+          </button>
         </div>
 
         {/* ── Search ── */}

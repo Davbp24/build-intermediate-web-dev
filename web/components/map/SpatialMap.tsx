@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import dynamic from 'next/dynamic'
+import Link from 'next/link'
+import Image from 'next/image'
 import type { MapCoordinate } from '@/lib/types'
 type GeocodeHit = { lat: number; lng: number; label: string }
 import { Skeleton } from '@/components/ui/skeleton'
@@ -9,8 +11,7 @@ import { cn } from '@/lib/utils'
 import { getDomainColor } from '@/lib/map-theme'
 import {
   Globe2, Map as MapIcon, Box, Eye,
-  Search, X, ChevronRight, ExternalLink,
-  PanelLeftClose, List, ChevronDown, MapPinPlus,
+  Search, X, MapPinPlus, ArrowLeft, ExternalLink,
 } from 'lucide-react'
 
 const LeafletMap = dynamic(() => import('./LeafletMap'), {
@@ -29,14 +30,9 @@ const VIEW_MODES: { id: ViewMode; label: string; icon: React.ElementType }[] = [
 
 const MY_PLACES_DOMAIN = 'my-places'
 
-function getDomainGroup(coords: MapCoordinate[]): Map<string, MapCoordinate[]> {
-  const groups = new Map<string, MapCoordinate[]>()
-  for (const c of coords) {
-    const key = c.domain
-    if (!groups.has(key)) groups.set(key, [])
-    groups.get(key)!.push(c)
-  }
-  return groups
+function locationImageUrl(coord: MapCoordinate): string {
+  const seed = coord.id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 12)
+  return `https://picsum.photos/seed/${seed}/400/240`
 }
 
 function loadStoredPins(key: string): MapCoordinate[] {
@@ -53,19 +49,20 @@ function loadStoredPins(key: string): MapCoordinate[] {
 
 interface SpatialMapProps {
   coordinates: MapCoordinate[]
-  /** Key for persisting user-placed pins (per workspace recommended). */
   storageKey?: string
+  backHref?: string
 }
 
-export default function SpatialMap({ coordinates: serverCoordinates, storageKey = 'inline-map-pins' }: SpatialMapProps) {
+export default function SpatialMap({
+  coordinates: serverCoordinates,
+  storageKey = 'inline-map-pins',
+  backHref = '/app/dashboard',
+}: SpatialMapProps) {
   const [mounted, setMounted] = useState(false)
   const [userPins, setUserPins] = useState<MapCoordinate[]>([])
   const [viewMode, setViewMode] = useState<ViewMode>('2d')
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [filterQuery, setFilterQuery] = useState('')
   const [hoveredDomain, setHoveredDomain] = useState<string | null>(null)
-  const [panelOpen, setPanelOpen] = useState(true)
-  const [expandedDomains, setExpandedDomains] = useState<Record<string, boolean>>({})
 
   const [placeQuery, setPlaceQuery] = useState('')
   const [placeHits, setPlaceHits] = useState<GeocodeHit[]>([])
@@ -74,8 +71,12 @@ export default function SpatialMap({ coordinates: serverCoordinates, storageKey 
   const [draftNote, setDraftNote] = useState('')
   const [pickMode, setPickMode] = useState(false)
   const [flyTo, setFlyTo] = useState<{ lat: number; lng: number; zoom?: number } | null>(null)
+  const [searchOpen, setSearchOpen] = useState(false)
 
   const placeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const carouselRef = useRef<HTMLDivElement>(null)
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => setMounted(true), [])
 
@@ -90,33 +91,16 @@ export default function SpatialMap({ coordinates: serverCoordinates, storageKey 
   }, [storageKey])
 
   useEffect(() => {
+    if (!mounted) return
     try {
       localStorage.setItem(storageKey, JSON.stringify(userPins))
-    } catch {
-      /* ignore quota */
-    }
-  }, [userPins, storageKey])
+    } catch { /* ignore quota */ }
+  }, [userPins, storageKey, mounted])
 
   const allCoordinates = useMemo(
     () => [...serverCoordinates, ...userPins],
     [serverCoordinates, userPins],
   )
-
-  const domainGroups = useMemo(() => getDomainGroup(allCoordinates), [allCoordinates])
-  const domainList = useMemo(() => {
-    const entries = [...domainGroups.entries()].sort((a, b) => b[1].length - a[1].length)
-    if (!filterQuery.trim()) return entries
-    const q = filterQuery.toLowerCase()
-    return entries.filter(
-      ([domain, items]) =>
-        domain.toLowerCase().includes(q) ||
-        items.some(
-          i =>
-            i.notePreview.toLowerCase().includes(q) ||
-            i.locationLabel.toLowerCase().includes(q),
-        ),
-    )
-  }, [domainGroups, filterQuery])
 
   const selectedCoord = allCoordinates.find(c => c.id === selectedId) ?? null
 
@@ -156,22 +140,14 @@ export default function SpatialMap({ coordinates: serverCoordinates, storageKey 
     placeTimer.current = setTimeout(async () => {
       try {
         const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`)
-        if (!res.ok) {
-          setPlaceHits([])
-          return
-        }
+        if (!res.ok) { setPlaceHits([]); return }
         const data = (await res.json()) as GeocodeHit[] | { error?: string }
         if (Array.isArray(data)) setPlaceHits(data)
         else setPlaceHits([])
-      } catch {
-        setPlaceHits([])
-      } finally {
-        setPlaceLoading(false)
-      }
+      } catch { setPlaceHits([]) }
+      finally { setPlaceLoading(false) }
     }, 350)
-    return () => {
-      if (placeTimer.current) clearTimeout(placeTimer.current)
-    }
+    return () => { if (placeTimer.current) clearTimeout(placeTimer.current) }
   }, [placeQuery])
 
   const selectPlaceHit = useCallback((hit: GeocodeHit) => {
@@ -207,25 +183,49 @@ export default function SpatialMap({ coordinates: serverCoordinates, storageKey 
     setSelectedId(id)
     setDraft(null)
     setDraftNote('')
-    setExpandedDomains(e => ({ ...e, [MY_PLACES_DOMAIN]: true }))
   }, [draft, draftNote])
 
-  const toggleDomainExpanded = (domain: string) => {
-    setExpandedDomains(e => ({ ...e, [domain]: !e[domain] }))
-  }
+  const handleSelectId = useCallback((id: string | null) => {
+    setSelectedId(id)
+    if (id) {
+      requestAnimationFrame(() => {
+        const el = cardRefs.current.get(id)
+        if (el) el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+      })
+    }
+  }, [])
+
+  const handleCardClick = useCallback((coord: MapCoordinate) => {
+    setSelectedId(coord.id)
+    setFlyTo({ lat: coord.lat, lng: coord.lng, zoom: 10 })
+  }, [])
+
+  const openSearch = useCallback(() => {
+    setSearchOpen(true)
+    requestAnimationFrame(() => searchInputRef.current?.focus())
+  }, [])
+
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false)
+    setPlaceQuery('')
+    setPlaceHits([])
+    setPickMode(false)
+    setDraft(null)
+    setDraftNote('')
+  }, [])
 
   return (
-    <div className="relative h-full w-full overflow-hidden">
-      <div className="relative h-full w-full">
+    <div className="relative h-full w-full overflow-x-hidden">
+      {/* Full-bleed map — overflow-hidden only on the map layer so card shadows/scale aren't clipped */}
+      <div className="absolute inset-0 overflow-hidden">
         {mounted && (
           <LeafletMap
-            key={storageKey}
             coordinates={allCoordinates}
             tileUrl={tileUrl}
             tileAttribution={tileAttribution}
             selectedId={selectedId}
             hoveredDomain={hoveredDomain}
-            onSelectId={setSelectedId}
+            onSelectId={handleSelectId}
             mapClickEnabled={pickMode}
             onMapClick={onMapClickPick}
             flyTo={flyTo}
@@ -233,220 +233,122 @@ export default function SpatialMap({ coordinates: serverCoordinates, storageKey 
         )}
       </div>
 
-      <div
-        className={cn(
-          'absolute left-3 top-3 bottom-3 z-700 flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-[width,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
-          panelOpen ? 'w-80 opacity-100' : 'w-0 border-0 opacity-0 pointer-events-none',
-        )}
+      {/* ── Back button (top-left) ── */}
+      <Link
+        href={backHref}
+        className="absolute left-4 top-4 z-700 flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-md transition-all hover:shadow-lg"
+        title="Back"
       >
-        <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
-          <p className="text-xs font-semibold text-foreground">Locations</p>
-          <button
-            type="button"
-            onClick={() => setPanelOpen(false)}
-            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            title="Hide panel"
-          >
-            <PanelLeftClose className="h-3.5 w-3.5" />
-          </button>
-        </div>
+        <ArrowLeft className="h-4 w-4 text-[#222]" />
+      </Link>
 
-        <div className="border-b border-border px-3 py-2.5">
-          <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-            Find a place
-          </p>
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={placeQuery}
-              onChange={e => setPlaceQuery(e.target.value)}
-              placeholder="Search address or city…"
-              className="h-8 w-full rounded-full border border-border bg-background pl-8 pr-3 text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-stone-400"
-            />
-          </div>
-          {placeLoading && (
-            <p className="mt-1 text-[10px] text-muted-foreground">Searching…</p>
-          )}
-          {placeHits.length > 0 && (
-            <ul className="mt-2 max-h-36 overflow-y-auto rounded-lg border border-border bg-background">
-              {placeHits.map((hit, i) => (
-                <li key={`${hit.lat}-${hit.lng}-${i}`}>
-                  <button
-                    type="button"
-                    onClick={() => selectPlaceHit(hit)}
-                    className="w-full cursor-pointer border-b border-border px-2 py-1.5 text-left text-[11px] text-foreground last:border-b-0 hover:bg-muted"
-                  >
-                    {hit.label}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+      {/* ── Floating search bar (top-center) ── */}
+      <div className="absolute left-1/2 top-4 z-700 -translate-x-1/2">
+        <div
+          className="flex items-center gap-2 rounded-full bg-white shadow-md transition-[width,padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          style={{ width: searchOpen ? 420 : 170, padding: searchOpen ? '8px 16px' : '8px 12px' }}
+        >
+          <Search className="h-4 w-4 shrink-0 text-[#666]" />
 
-          <button
-            type="button"
-            onClick={() => {
-              setPickMode(p => !p)
-              setDraft(null)
-              setDraftNote('')
-            }}
-            className={cn(
-              'mt-2 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-full border py-1.5 text-[11px] font-medium transition-colors',
-              pickMode
-                ? 'border-primary bg-primary text-primary-foreground'
-                : 'border-border bg-muted/50 text-foreground hover:bg-muted',
-            )}
-          >
-            <MapPinPlus className="h-3.5 w-3.5" />
-            {pickMode ? 'Click map to place…' : 'Drop pin on map'}
-          </button>
-
-          {draft && (
-            <div className="mt-2 space-y-2 rounded-xl border border-border bg-muted/30 p-2.5">
-              <p className="text-[10px] font-medium text-muted-foreground line-clamp-2">{draft.label}</p>
-              <textarea
-                value={draftNote}
-                onChange={e => setDraftNote(e.target.value)}
-                placeholder="Note for this location…"
-                rows={3}
-                className="w-full resize-none rounded-lg border border-border bg-background px-2 py-1.5 text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-stone-400"
+          {searchOpen ? (
+            <>
+              <input
+                ref={searchInputRef}
+                value={placeQuery}
+                onChange={e => setPlaceQuery(e.target.value)}
+                placeholder="Search an address or city…"
+                className="min-w-0 flex-1 border-none bg-transparent text-sm text-[#222] outline-none placeholder:text-[#999]"
               />
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={saveDraftPin}
-                  disabled={!draftNote.trim()}
-                  className="flex-1 cursor-pointer rounded-lg bg-primary py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-40"
-                >
-                  Save pin
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDraft(null)
-                    setDraftNote('')
-                  }}
-                  className="cursor-pointer rounded-lg border border-border px-2 py-1.5 text-xs text-foreground hover:bg-muted"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="border-b border-border px-3 py-2">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={filterQuery}
-              onChange={e => setFilterQuery(e.target.value)}
-              placeholder="Filter list…"
-              className="h-8 w-full rounded-full border border-border bg-background pl-8 pr-8 text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-stone-400"
-            />
-            {filterQuery && (
               <button
                 type="button"
-                onClick={() => setFilterQuery('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            )}
-          </div>
-          <p className="mt-1.5 text-[10px] text-muted-foreground">
-            {allCoordinates.length} locations · {domainGroups.size} domains
-          </p>
-        </div>
-
-        <div className="scrollbar-minimal flex-1 space-y-2 overflow-y-auto px-2 py-2">
-          {domainList.map(([domain, items]) => {
-            const color = getDomainColor(domain)
-            const expanded = expandedDomains[domain] ?? true
-            return (
-              <div
-                key={domain}
-                onMouseEnter={() => setHoveredDomain(domain)}
-                onMouseLeave={() => setHoveredDomain(null)}
-              >
-                <button
-                  type="button"
-                  onClick={() => toggleDomainExpanded(domain)}
-                  className="flex w-full cursor-pointer items-center gap-2.5 rounded-full border border-border bg-muted/40 px-2.5 py-2 text-left transition-colors hover:bg-muted/70"
-                >
-                  <div
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                    style={{ backgroundColor: color }}
-                  >
-                    {domain.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-medium text-foreground">{domain}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {items.length} {items.length === 1 ? 'note' : 'notes'}
-                    </p>
-                  </div>
-                  <ChevronDown
-                    className={cn(
-                      'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
-                      expanded ? 'rotate-180' : '',
-                    )}
-                  />
-                </button>
-
-                {expanded && (
-                  <div className="mt-1 space-y-0.5 pl-1">
-                    {items.map(item => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => setSelectedId(selectedId === item.id ? null : item.id)}
-                        className={cn(
-                          'flex w-full cursor-pointer items-center gap-2 rounded-full border px-2.5 py-1.5 text-left transition-colors',
-                          selectedId === item.id
-                            ? 'border-stone-400 bg-muted'
-                            : 'border-transparent hover:bg-muted/50',
-                        )}
-                      >
-                        <span
-                          className="h-2 w-2 shrink-0 rounded-full"
-                          style={{ backgroundColor: color }}
-                        />
-                        <div className="min-w-0 flex-1">
-                          <p className="line-clamp-1 text-[11px] font-medium text-foreground">
-                            {item.locationLabel}
-                          </p>
-                          <p className="line-clamp-1 text-[10px] text-muted-foreground">
-                            {item.notePreview}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+                onClick={() => {
+                  setPickMode(p => !p)
+                  setDraft(null)
+                  setDraftNote('')
+                }}
+                className={cn(
+                  'flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors',
+                  pickMode ? 'bg-[#222] text-white' : 'bg-[#f0f0f0] text-[#666] hover:bg-[#e0e0e0]',
                 )}
-              </div>
-            )
-          })}
+                title={pickMode ? 'Cancel pin drop' : 'Drop a pin'}
+              >
+                <MapPinPlus className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={closeSearch}
+                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full text-[#999] transition-colors hover:bg-[#f0f0f0] hover:text-[#222]"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={openSearch}
+              className="cursor-pointer whitespace-nowrap text-sm text-[#666]"
+            >
+              Search places
+            </button>
+          )}
         </div>
+
+        {/* Geocode results dropdown */}
+        {searchOpen && placeHits.length > 0 && (
+          <div className="scrollbar-overlay mt-2 max-h-52 overflow-y-auto rounded-2xl bg-white shadow-lg">
+            {placeHits.map((hit, i) => (
+              <button
+                key={`${hit.lat}-${hit.lng}-${i}`}
+                type="button"
+                onClick={() => selectPlaceHit(hit)}
+                className="block w-full cursor-pointer border-b border-[#f0f0f0] px-4 py-2.5 text-left text-sm text-[#222] transition-colors last:border-b-0 hover:bg-[#f8f8f8]"
+              >
+                {hit.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {searchOpen && placeLoading && (
+          <div className="mt-2 rounded-2xl bg-white px-4 py-3 text-center text-xs text-[#999] shadow-lg">
+            Searching…
+          </div>
+        )}
+
+        {/* Draft pin note input */}
+        {draft && (
+          <div className="mt-2 w-[420px] rounded-2xl bg-white p-4 shadow-lg">
+            <p className="mb-2 text-xs font-medium text-[#999] line-clamp-1">{draft.label}</p>
+            <textarea
+              value={draftNote}
+              onChange={e => setDraftNote(e.target.value)}
+              placeholder="Add a note for this place…"
+              rows={2}
+              className="w-full resize-none rounded-xl border border-[#e5e5e5] bg-white px-3 py-2 text-sm text-[#222] outline-none placeholder:text-[#999] focus:border-[#ccc]"
+            />
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={saveDraftPin}
+                disabled={!draftNote.trim()}
+                className="flex-1 cursor-pointer rounded-full bg-[#222] px-4 py-2 text-xs font-semibold text-white transition-opacity disabled:opacity-30"
+              >
+                Save pin
+              </button>
+              <button
+                type="button"
+                onClick={() => { setDraft(null); setDraftNote('') }}
+                className="cursor-pointer rounded-full border border-[#e5e5e5] px-4 py-2 text-xs text-[#666] transition-colors hover:bg-[#f5f5f5]"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {!panelOpen && (
-        <button
-          type="button"
-          onClick={() => setPanelOpen(true)}
-          className="absolute left-3 top-3 z-700 flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-border bg-card transition-colors hover:bg-muted"
-          title="Show locations"
-        >
-          <List className="h-4 w-4 text-foreground" />
-        </button>
-      )}
-
-      <div
-        className={cn(
-          'absolute top-3 z-700 flex overflow-hidden rounded-xl border border-border bg-card p-0.5 transition-[left] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
-          panelOpen ? 'left-[332px]' : 'left-16',
-        )}
-      >
+      {/* ── View mode pills (top-right) ── */}
+      <div className="absolute right-4 top-4 z-700 flex overflow-hidden rounded-full bg-white p-1 shadow-md">
         {VIEW_MODES.map(v => {
           const Icon = v.icon
           const active = viewMode === v.id
@@ -456,10 +358,10 @@ export default function SpatialMap({ coordinates: serverCoordinates, storageKey 
               type="button"
               onClick={() => setViewMode(v.id)}
               className={cn(
-                'flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
+                'flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all',
                 active
-                  ? 'bg-foreground text-background'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                  ? 'bg-[#222] text-white'
+                  : 'text-[#666] hover:bg-[#f0f0f0] hover:text-[#222]',
               )}
             >
               <Icon className="h-3.5 w-3.5" />
@@ -469,80 +371,98 @@ export default function SpatialMap({ coordinates: serverCoordinates, storageKey 
         })}
       </div>
 
-      <div
-        className={cn(
-          'absolute bottom-4 z-700 flex flex-col gap-1.5 rounded-xl border border-border bg-card p-3 transition-[left] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
-          panelOpen ? 'left-[332px]' : 'left-3',
-        )}
-      >
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Domains
-        </p>
-        {[...domainGroups.entries()]
-          .sort((a, b) => b[1].length - a[1].length)
-          .slice(0, 6)
-          .map(([domain, items]) => (
-            <div
-              key={domain}
-              className="flex cursor-default items-center gap-2 rounded-full border border-border bg-muted/30 px-2 py-1"
-              onMouseEnter={() => setHoveredDomain(domain)}
-              onMouseLeave={() => setHoveredDomain(null)}
-            >
-              <div
-                className="h-2.5 w-2.5 shrink-0 rounded-full"
-                style={{ backgroundColor: getDomainColor(domain) }}
-              />
-              <span className="min-w-0 flex-1 truncate text-[11px] text-foreground">{domain}</span>
-              <span className="shrink-0 text-[10px] font-medium tabular-nums text-muted-foreground">
-                {items.length}
-              </span>
-            </div>
-          ))}
-        <p className="text-[9px] text-muted-foreground">Lines link same domain</p>
-      </div>
+      {/* ── Bottom card carousel ── */}
+      {allCoordinates.length > 0 && (
+        <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-700 pt-16"
+          style={{ background: 'linear-gradient(to top, rgba(255,255,255,0.90) 65%, rgba(255,255,255,0) 100%)' }}
+        >
+          <div
+            ref={carouselRef}
+            className="scrollbar-none pointer-events-auto flex items-end gap-4 overflow-x-auto overflow-y-visible px-4 pb-5 snap-x snap-mandatory"
+            style={{ scrollbarWidth: 'none' }}
+          >
+            {allCoordinates.map(coord => {
+              const isSelected = selectedId === coord.id
+              const color = getDomainColor(coord.domain)
 
-      {selectedCoord && (
-        <div className="absolute bottom-4 right-4 z-700 w-80 overflow-hidden rounded-2xl border border-border bg-card">
-          <div className="relative">
-            <div className="h-1" style={{ backgroundColor: getDomainColor(selectedCoord.domain) }} />
-            <button
-              type="button"
-              onClick={() => setSelectedId(null)}
-              className="absolute right-2 top-2.5 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <X className="h-3 w-3" />
-            </button>
+              return (
+                <div
+                  key={coord.id}
+                  ref={el => { if (el) cardRefs.current.set(coord.id, el) }}
+                  onClick={() => handleCardClick(coord)}
+                  onMouseEnter={() => setHoveredDomain(coord.domain)}
+                  onMouseLeave={() => setHoveredDomain(null)}
+                  className={cn(
+                    'shrink-0 snap-start cursor-pointer rounded-xl bg-white p-2 w-[240px] shadow-md',
+                    isSelected && 'ring-1 shadow-lg',
+                  )}
+                  style={isSelected ? { '--tw-ring-color': color } as React.CSSProperties : undefined}
+                >
+                  <div className="relative h-[160px] w-full overflow-hidden rounded-lg bg-[#eee]">
+                    <Image
+                      src={locationImageUrl(coord)}
+                      alt={coord.locationLabel}
+                      fill
+                      className="object-cover"
+                      sizes="240px"
+                      unoptimized
+                    />
+                  </div>
+
+                  <div className="px-1 pb-1 pt-2.5">
+                    <p className="text-[11px] font-medium capitalize text-[#888]">
+                      {coord.type.replace('-', ' ')}
+                    </p>
+                    <p className="mt-0.5 text-[13px] font-semibold leading-snug text-[#222] line-clamp-1">
+                      {coord.locationLabel}
+                    </p>
+                    <div className="mt-1 flex items-center justify-between">
+                      <p className="text-xs font-medium text-[#222]">{coord.domain}</p>
+                      <p className="text-[11px] text-[#666] line-clamp-1 max-w-[100px] text-right">
+                        {coord.notePreview}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
-          <div className="space-y-3 p-4">
-            <div className="flex items-start gap-3">
-              <div
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
-                style={{ backgroundColor: getDomainColor(selectedCoord.domain) }}
+        </div>
+      )}
+
+      {/* ── Selected note detail (above carousel) ── */}
+      {selectedCoord && (
+        <div className="absolute bottom-[310px] right-4 z-700 w-72 overflow-hidden rounded-2xl bg-white shadow-lg">
+          <div className="h-1" style={{ backgroundColor: getDomainColor(selectedCoord.domain) }} />
+          <div className="p-4">
+            <div className="flex items-start justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-[#999]">{selectedCoord.domain}</p>
+                <p className="mt-0.5 text-sm font-semibold text-[#222]">{selectedCoord.locationLabel}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedId(null)}
+                className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-[#999] transition-colors hover:bg-[#f0f0f0] hover:text-[#222]"
               >
-                {selectedCoord.domain.charAt(0).toUpperCase()}
-              </div>
-              <div className="min-w-0 flex-1 pr-6">
-                <p className="text-sm font-semibold text-foreground">{selectedCoord.domain}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">{selectedCoord.locationLabel}</p>
-              </div>
+                <X className="h-3 w-3" />
+              </button>
             </div>
-            <div className="rounded-xl border border-border bg-muted/30 p-3">
-              <p className="text-xs leading-relaxed text-foreground">{selectedCoord.notePreview}</p>
+            <div className="mt-2.5 rounded-xl bg-[#f8f8f8] p-2.5">
+              <p className="text-xs leading-relaxed text-[#333]">{selectedCoord.notePreview}</p>
             </div>
-            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-              <span className="font-mono">
+            <div className="mt-2 flex items-center justify-between">
+              <span className="font-mono text-[10px] text-[#bbb]">
                 {selectedCoord.lat.toFixed(4)}, {selectedCoord.lng.toFixed(4)}
               </span>
-              <span className="capitalize">{selectedCoord.type.replace('-', ' ')}</span>
+              <button
+                type="button"
+                className="flex cursor-pointer items-center gap-1 text-[10px] font-medium text-[#666] transition-colors hover:text-[#222]"
+              >
+                <ExternalLink className="h-2.5 w-2.5" />
+                View note
+              </button>
             </div>
-            <button
-              type="button"
-              className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted"
-            >
-              <ExternalLink className="h-3 w-3" />
-              View full note
-              <ChevronRight className="h-3 w-3" />
-            </button>
           </div>
         </div>
       )}

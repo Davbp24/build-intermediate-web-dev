@@ -32,8 +32,8 @@ export default function TopDomainsChart({ data }: TopDomainsChartProps) {
         <p className="text-sm font-semibold text-foreground">Top Domains</p>
         <p className="mt-0.5 text-xs text-muted-foreground">Notes by website</p>
       </div>
-      <div className="h-48">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="relative h-48">
+        <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
           <BarChart
             data={data.slice(0, 6)}
             layout="vertical"

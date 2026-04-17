@@ -15,10 +15,15 @@ interface Point {
 }
 
 interface Stroke {
+  id?: string
   points: Point[]
   color: string
   thickness: number
   tool: HWTool
+}
+
+function makeStrokeId(): string {
+  return `hw-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 }
 
 const IPen = () => (
@@ -93,6 +98,7 @@ export default function Handwriting({ onClose }: HandwritingProps) {
 
   useEffect(() => {
     try {
+      if (!chrome.runtime?.id) return
       chrome.runtime.sendMessage(
         { type: 'LOAD_ANNOTATIONS', payload: { pageUrl: window.location.href } },
         (response) => {
@@ -178,12 +184,21 @@ export default function Handwriting({ onClose }: HandwritingProps) {
   }, [renderStroke])
 
   const persistData = useCallback(() => {
-    if (strokes.current.length === 0) return
     try {
+      if (!chrome.runtime?.id) return
+      const data = strokes.current.map(s => ({ ...s, id: s.id ?? makeStrokeId() }))
+      strokes.current = data
       chrome.runtime.sendMessage(
         {
           type: 'SAVE_ANNOTATIONS',
-          payload: { pageUrl: window.location.href, featureKey: 'handwriting', data: strokes.current },
+          payload: {
+            pageUrl: window.location.href,
+            featureKey: 'handwriting',
+            data,
+            pageTitle: document.title,
+            domain: window.location.hostname,
+            clearedAt: data.length === 0 ? Date.now() : null,
+          },
         },
         () => { if (chrome.runtime.lastError) { /* ignore */ } },
       )
@@ -198,6 +213,7 @@ export default function Handwriting({ onClose }: HandwritingProps) {
       drawing.current = true
       const pressure = e.pressure > 0 ? e.pressure : 0.5
       currentStroke.current = {
+        id: makeStrokeId(),
         points: [{ x: e.clientX, y: e.clientY, pressure }],
         color,
         thickness,

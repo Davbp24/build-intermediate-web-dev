@@ -15,28 +15,20 @@ interface LeafletMapProps {
   onSelectId: (id: string | null) => void
   mapClickEnabled?: boolean
   onMapClick?: (lat: number, lng: number) => void
-  /** Fly the map when this object changes (reference equality). */
   flyTo?: { lat: number; lng: number; zoom?: number } | null
 }
 
-function markerHtml(color: string, size: number, isSelected: boolean): string {
-  const pulseRing = isSelected
-    ? `<div style="
-        position:absolute;top:-4px;left:-4px;
-        width:${size + 8}px;height:${size + 8}px;
-        border-radius:50%;border:2px solid ${color};
-        opacity:0.35;animation:map-pulse 2s ease-out infinite;
-      "></div>`
-    : ''
-  return `<div style="position:relative;width:${size}px;height:${size}px;">
-    ${pulseRing}
-    <div style="
-      position:absolute;top:0;left:0;
-      width:${size}px;height:${size}px;border-radius:50%;
-      background:${color};
-      border:${isSelected ? 3 : 2}px solid #fff;
-      cursor:pointer;
-    "></div>
+function pillMarkerHtml(label: string, color: string, isSelected: boolean): string {
+  const maxLen = 18
+  const truncated = label.length > maxLen ? label.slice(0, maxLen) + '…' : label
+
+  if (isSelected) {
+    return `<div class="inline-pill-marker inline-pill-selected" style="--pill-color:${color}">
+      <span class="inline-pill-text">${truncated}</span>
+    </div>`
+  }
+  return `<div class="inline-pill-marker" style="--pill-color:${color}">
+    <span class="inline-pill-text">${truncated}</span>
   </div>`
 }
 
@@ -98,8 +90,8 @@ export default function LeafletMap({
           ],
           {
             color,
-            weight: isHovered ? 3 : 1.5,
-            opacity: isHovered ? 0.65 : 0.35,
+            weight: isHovered ? 2.5 : 1,
+            opacity: isHovered ? 0.5 : 0.2,
             dashArray: isHovered ? undefined : '6 4',
             className: 'map-connection-line',
           },
@@ -117,56 +109,22 @@ export default function LeafletMap({
     markersRef.current.forEach(m => map.removeLayer(m))
     markersRef.current.clear()
 
-    const esc = (s: string) =>
-      s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-
     coordinates.forEach(coord => {
       const color = getDomainColor(coord.domain)
       const isSelected = selectedId === coord.id
-      const size = isSelected ? 20 : 14
+      const label = coord.locationLabel || coord.domain
+
+      const html = pillMarkerHtml(label, color, isSelected)
 
       const icon = L.divIcon({
-        className: '',
-        html: markerHtml(color, size, isSelected),
-        iconSize: [size, size],
-        iconAnchor: [size / 2, size / 2],
+        className: 'inline-pill-wrapper',
+        html,
+        iconSize: [0, 0],
+        iconAnchor: [0, 16],
       })
 
       const marker = L.marker([coord.lat, coord.lng], { icon }).addTo(map)
       markersRef.current.set(coord.id, marker)
-
-      marker.bindPopup(
-        `<div style="font-family:-apple-system,system-ui,'Inter',sans-serif;font-size:12px;min-width:220px;max-width:280px">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-            <div style="
-              width:28px;height:28px;border-radius:9999px;
-              background:${color};
-              display:flex;align-items:center;justify-content:center;
-              color:#fff;font-weight:700;font-size:11px;flex-shrink:0;
-            ">${esc(coord.domain.charAt(0).toUpperCase())}</div>
-            <div>
-              <div style="font-weight:700;color:#1C1E26;font-size:13px">${esc(coord.domain)}</div>
-              <div style="font-size:10px;color:#78716c;margin-top:1px">${esc(coord.locationLabel)}</div>
-            </div>
-          </div>
-          <div style="background:#FDFBF7;border:1px solid #d6d3d1;border-radius:10px;padding:10px 12px;margin-bottom:8px;">
-            <div style="color:#1C1E26;line-height:1.55;font-size:11.5px">${esc(coord.notePreview)}</div>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <span style="
-              display:inline-flex;align-items:center;gap:4px;
-              font-size:10px;font-weight:600;color:${color};
-              text-transform:uppercase;letter-spacing:0.5px;
-            ">
-              <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${color}"></span>
-              ${esc(coord.type.replace('-', ' '))}
-            </span>
-            <span style="font-size:10px;color:#a8a29e;font-family:monospace">${coord.lat.toFixed(4)}, ${coord.lng.toFixed(4)}</span>
-          </div>
-        </div>`,
-        { className: 'inline-popup', maxWidth: 300 },
-      )
-
       marker.on('click', () => onSelectId(coord.id))
     })
 
@@ -212,7 +170,7 @@ export default function LeafletMap({
         linesRef.current = []
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- map mounts once; tile URL updated separately
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -234,7 +192,7 @@ export default function LeafletMap({
       if (coordinates.length === 1) {
         map.setView([coordinates[0].lat, coordinates[0].lng], 6)
       } else {
-        const bounds = L.latLngBounds(coordinates.map(c => [c.lat, c.lng]))
+        const bounds = L.latLngBounds(coordinates.map((c: MapCoordinate) => [c.lat, c.lng]))
         if (bounds.isValid()) {
           map.fitBounds(bounds, { padding: [80, 80], maxZoom: 12 })
         } else {
@@ -276,13 +234,13 @@ export default function LeafletMap({
       if (!marker) return
       const color = getDomainColor(coord.domain)
       const isSelected = selectedId === coord.id
-      const size = isSelected ? 20 : 14
+      const label = coord.locationLabel || coord.domain
 
       const icon = L.divIcon({
-        className: '',
-        html: markerHtml(color, size, isSelected),
-        iconSize: [size, size],
-        iconAnchor: [size / 2, size / 2],
+        className: 'inline-pill-wrapper',
+        html: pillMarkerHtml(label, color, isSelected),
+        iconSize: [0, 0],
+        iconAnchor: [0, 16],
       })
       marker.setIcon(icon)
     })
@@ -309,42 +267,96 @@ export default function LeafletMap({
           100% { transform: scale(2.2); opacity: 0; }
         }
         .map-connection-line { pointer-events: none; }
-        .inline-popup .leaflet-popup-content-wrapper {
-          background: #fff;
-          border: 1px solid #d6d3d1;
-          border-radius: 14px;
-          padding: 0;
+
+        /* Pill marker */
+        .inline-pill-wrapper {
+          overflow: visible !important;
         }
-        .inline-popup .leaflet-popup-content { margin: 12px 14px; }
-        .inline-popup .leaflet-popup-tip { background: #fff; border: 1px solid #d6d3d1; }
+        .inline-pill-marker {
+          position: absolute;
+          transform: translate(-50%, -100%);
+          white-space: nowrap;
+          padding: 6px 12px;
+          border-radius: 20px;
+          background: #fff;
+          color: #222;
+          font-size: 12px;
+          font-weight: 600;
+          font-family: -apple-system, system-ui, 'Inter', sans-serif;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.08);
+          cursor: pointer;
+          transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease;
+          border: 1.5px solid rgba(0,0,0,0.06);
+          line-height: 1;
+        }
+        .inline-pill-marker::after {
+          content: '';
+          position: absolute;
+          bottom: -6px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 0;
+          height: 0;
+          border-left: 6px solid transparent;
+          border-right: 6px solid transparent;
+          border-top: 6px solid #fff;
+          filter: drop-shadow(0 1px 1px rgba(0,0,0,0.06));
+        }
+        .inline-pill-marker:hover {
+          transform: translate(-50%, -100%) scale(1.06);
+          box-shadow: 0 4px 16px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.1);
+          z-index: 999 !important;
+        }
+        .inline-pill-selected {
+          background: var(--pill-color, #222);
+          color: #fff;
+          border-color: var(--pill-color, #222);
+          transform: translate(-50%, -100%) scale(1.1);
+          box-shadow: 0 4px 20px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.12);
+          z-index: 1000 !important;
+        }
+        .inline-pill-selected::after {
+          border-top-color: var(--pill-color, #222);
+        }
+        .inline-pill-selected:hover {
+          transform: translate(-50%, -100%) scale(1.12);
+        }
+        .inline-pill-text {
+          position: relative;
+          z-index: 1;
+        }
+
+        /* Zoom controls */
         .leaflet-control-zoom {
-          border: 1px solid #d6d3d1 !important;
+          border: 1px solid rgba(0,0,0,0.08) !important;
           border-radius: 12px !important;
           overflow: hidden;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
         }
         .leaflet-control-zoom a {
-          background: #FDFBF7 !important;
-          color: #57534e !important;
-          border-bottom: 1px solid #d6d3d1 !important;
+          background: #fff !important;
+          color: #333 !important;
+          border-bottom: 1px solid rgba(0,0,0,0.06) !important;
           font-size: 16px !important;
-          width: 34px !important;
-          height: 34px !important;
-          line-height: 34px !important;
+          width: 36px !important;
+          height: 36px !important;
+          line-height: 36px !important;
         }
         .leaflet-control-zoom a:hover {
-          background: #F5EDE3 !important;
-          color: #1C1E26 !important;
+          background: #f5f5f5 !important;
+          color: #111 !important;
         }
         .leaflet-control-zoom-in { border-radius: 12px 12px 0 0 !important; }
         .leaflet-control-zoom-out { border-radius: 0 0 12px 12px !important; border-bottom: none !important; }
         .leaflet-attribution-flag { display: none !important; }
         .leaflet-control-attribution {
-          background: rgba(253, 251, 247, 0.92) !important;
-          color: #a8a29e !important;
+          background: rgba(255,255,255,0.85) !important;
+          color: #999 !important;
           font-size: 9px !important;
+          backdrop-filter: blur(4px);
         }
         .leaflet-container {
-          background: #FDFBF7;
+          background: #f8f8f8;
           font-family: -apple-system, system-ui, 'Inter', sans-serif;
         }
         .leaflet-container.map-cursor-crosshair {

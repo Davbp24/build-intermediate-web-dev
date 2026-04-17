@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { fetchNoteById, fetchExtractionsForNote } from '@/lib/data'
 import { ArrowLeft, Globe, Calendar, Tag, MapPin, FileText } from 'lucide-react'
 import CreateDocFromNoteCTA from './CreateDocFromNoteCTA'
+import { prettyNotePreview } from '@/lib/note-preview'
 
 export default async function NoteDetailPage({
   params,
@@ -64,7 +65,7 @@ export default async function NoteDetailPage({
           </h2>
           <div className="rounded-xl border border-border bg-slate-50 p-4">
             <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
-              {note.content || '(no content)'}
+              {prettyNotePreview(note) || '(no content)'}
             </p>
           </div>
         </section>
@@ -104,6 +105,7 @@ export default async function NoteDetailPage({
             workspaceId={workspaceId}
             noteContent={note.content}
             noteTitle={note.pageTitle || 'Note from ' + note.domain}
+            note={note}
           />
         </div>
       </div>

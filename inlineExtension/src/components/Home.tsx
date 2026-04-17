@@ -151,16 +151,17 @@ function Tooltip({ text, visible }: { text: string; visible: boolean }) {
             marginRight: 10,
             whiteSpace: 'nowrap',
             background: ACCENT,
-            color: 'rgba(255,255,255,0.88)',
+            color: '#ffffff',
             fontSize: 11,
-            fontWeight: 500,
+            fontWeight: 700,
             fontFamily: FONT,
-            padding: '5px 10px',
-            borderRadius: 8,
+            padding: '6px 14px',
+            borderRadius: 9999,
+            border: '1px solid rgba(255,255,255,0.1)',
             pointerEvents: 'none',
             letterSpacing: '-0.01em',
             lineHeight: 1,
-            boxShadow: '0 4px 12px -2px rgba(0,0,0,0.2)',
+            boxShadow: '0 4px 16px -4px rgba(0,0,0,0.25)',
           }}
         >
           {text}
@@ -170,33 +171,111 @@ function Tooltip({ text, visible }: { text: string; visible: boolean }) {
   )
 }
 
-const PILL_W = 38
+const PILL_W = 46
+const PILL_BTN = 32
 
 interface HomeProps {
   selectedText: string
   originalRange: Range | null
 }
 
+type PaperNote = {
+  id: string
+  x: number
+  y: number
+  w: number
+  h: number
+  content: string
+  paperStyle: 'Plain' | 'Ruled' | 'Grid' | 'Dotted'
+  createdAt: number
+  updatedAt: number
+}
+
+function makePaperNoteId(): string {
+  return `pn-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+}
+
 export default function Home({ selectedText, originalRange }: HomeProps) {
   const [pinnedPanel, setPinnedPanel] = useState<PanelId>(null)
-  const [notesOpen, setNotesOpen] = useState<{ x: number; y: number }[]>([])
+  const [paperNotes, setPaperNotes] = useState<PaperNote[]>([])
+  const [paperNotesLoaded, setPaperNotesLoaded] = useState(false)
+  const paperSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [pillCollapsed, setPillCollapsed] = useState(false)
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false)
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null)
   const [laserActive, setLaserActive] = useState(false)
   const [hidden, setHidden] = useState(false)
   const [hoveredTool, setHoveredTool] = useState<string | null>(null)
+  const [hoveredEye, setHoveredEye] = useState(false)
+  const [pillHoverKey, setPillHoverKey] = useState<string | null>(null)
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const activePanel = pinnedPanel
 
+  useEffect(() => {
+    if (!chrome.runtime?.id) { setPaperNotesLoaded(true); return }
+    chrome.runtime.sendMessage(
+      { type: 'LOAD_ANNOTATIONS', payload: { pageUrl: window.location.href } },
+      (response) => {
+        if (chrome.runtime.lastError) { setPaperNotesLoaded(true); return }
+        const saved = response?.data?.elements?.paperNotes as PaperNote[] | undefined
+        if (Array.isArray(saved)) setPaperNotes(saved)
+        setPaperNotesLoaded(true)
+      },
+    )
+  }, [])
+
+  useEffect(() => {
+    if (!paperNotesLoaded) return
+    if (paperSaveTimer.current) clearTimeout(paperSaveTimer.current)
+    paperSaveTimer.current = setTimeout(() => {
+      if (!chrome.runtime?.id) return
+      chrome.runtime.sendMessage(
+        {
+          type: 'SAVE_ANNOTATIONS',
+          payload: {
+            pageUrl: window.location.href,
+            featureKey: 'paperNotes',
+            data: paperNotes,
+            pageTitle: document.title,
+            domain: window.location.hostname,
+            clearedAt: paperNotes.length === 0 ? Date.now() : null,
+          },
+        },
+        () => { if (chrome.runtime.lastError) { /* ignore */ } },
+      )
+    }, 500)
+    return () => { if (paperSaveTimer.current) clearTimeout(paperSaveTimer.current) }
+  }, [paperNotes, paperNotesLoaded])
+
+  const updatePaperNote = useCallback((id: string, patch: Partial<PaperNote>) => {
+    setPaperNotes(prev => prev.map(n => n.id === id
+      ? { ...n, ...patch, updatedAt: Date.now() }
+      : n))
+  }, [])
+
+  const closePaperNote = useCallback((id: string) => {
+    setPaperNotes(prev => prev.filter(n => n.id !== id))
+  }, [])
+
   const toggle = useCallback((id: PanelId) => {
     if (id === 'notes') {
-      setNotesOpen(prev => [...prev, { x: 120 + prev.length * 20, y: 120 + prev.length * 20 }])
+      setPaperNotes(prev => [...prev, {
+        id: makePaperNoteId(),
+        x: 120 + prev.length * 20,
+        y: 120 + prev.length * 20,
+        w: 320, h: 260,
+        content: '',
+        paperStyle: 'Plain',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }])
       return
     }
     if (id === 'screenshot') {
+      if (!chrome.runtime?.id) return
       chrome.runtime.sendMessage({ type: 'CAPTURE_TAB' }, (response) => {
+        if (chrome.runtime.lastError) return
         if (response?.ok && response.dataUrl) {
           setScreenshotUrl(response.dataUrl)
         }
@@ -253,12 +332,14 @@ export default function Home({ selectedText, originalRange }: HomeProps) {
     return () => document.removeEventListener('inline:hideAll', handler)
   }, [closePanel])
 
-  const handleHoverStart = useCallback((label: string) => {
+  const handlePillEnter = useCallback((key: string, label: string) => {
+    setPillHoverKey(key)
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
     hoverTimerRef.current = setTimeout(() => setHoveredTool(label), 150)
   }, [])
 
-  const handleHoverEnd = useCallback(() => {
+  const handlePillLeave = useCallback(() => {
+    setPillHoverKey(null)
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
     setHoveredTool(null)
   }, [])
@@ -362,7 +443,8 @@ export default function Home({ selectedText, originalRange }: HomeProps) {
         maxHeight: 'calc(100vh - 40px)',
         overflowY: 'auto',
         overflowX: 'hidden',
-        scrollbarWidth: 'none',
+        scrollbarWidth: 'thin',
+        scrollbarColor: 'rgba(0,0,0,0.08) transparent',
       }}
     >
       {activePanel === 'rewrite' && <Rewrite selectedText={selectedText} originalRange={originalRange} onClose={closePanel} />}
@@ -399,31 +481,37 @@ export default function Home({ selectedText, originalRange }: HomeProps) {
         </AnimatePresence>
 
         {hidden && (
-          <motion.button
-            type="button"
-            onClick={toggleHidden}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={pillSpring}
-            title="Show extension"
-            style={{
-              width: PILL_W,
-              height: PILL_W,
-              borderRadius: '50%',
-              background: ACCENT,
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'rgba(255,255,255,0.7)',
-              boxShadow: '0 4px 16px -4px rgba(28,30,38,0.22)',
-              padding: 0,
-              outline: 'none',
-            }}
-          >
-            <IEye />
-          </motion.button>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <Tooltip text="Show Inline" visible={hoveredEye} />
+            <motion.button
+              type="button"
+              onClick={toggleHidden}
+              onMouseEnter={() => setHoveredEye(true)}
+              onMouseLeave={() => setHoveredEye(false)}
+              title="Show Inline"
+              aria-label="Show Inline"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={pillSpring}
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: '50%',
+                background: '#FFFFFF',
+                border: '1px solid rgba(0,0,0,0.08)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#666',
+                boxShadow: '0 4px 16px -4px rgba(0,0,0,0.12)',
+                padding: 0,
+                outline: 'none',
+              }}
+            >
+              <IEye />
+            </motion.button>
+          </div>
         )}
 
         {!hidden && (
@@ -434,44 +522,58 @@ export default function Home({ selectedText, originalRange }: HomeProps) {
               alignItems: 'center',
               width: PILL_W,
               background: ACCENT,
-              borderRadius: PILL_W / 2,
               overflow: 'hidden',
               boxShadow: '0 4px 20px -6px rgba(28,30,38,0.22)',
+              justifyContent: pillCollapsed ? 'center' : 'flex-start',
             }}
             animate={{
-              paddingTop: pillCollapsed ? 5 : 5,
-              paddingBottom: pillCollapsed ? 5 : 5,
+              borderRadius: pillCollapsed ? '50%' : PILL_W / 2,
+              height: pillCollapsed ? PILL_W : 'auto',
+              paddingTop: pillCollapsed ? 0 : 5,
+              paddingBottom: pillCollapsed ? 0 : 5,
             }}
             transition={pillSpring}
           >
-            <motion.button
-              type="button"
-              onClick={togglePillCollapse}
-              title={pillCollapsed ? 'Expand toolbar' : 'Collapse toolbar'}
-              aria-expanded={!pillCollapsed}
-              transition={pillSpring}
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: 'none',
-                background: 'transparent',
-                cursor: 'pointer',
-                padding: 0,
-                flexShrink: 0,
-              }}
-            >
-              <div style={{
-                width: 3,
-                height: 14,
-                borderRadius: 2,
-                background: 'rgba(255,255,255,0.55)',
-                transform: 'rotate(-12deg)',
-              }} />
-            </motion.button>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <Tooltip
+                text={pillCollapsed ? 'Expand Inline' : 'Collapse Inline'}
+                visible={hoveredTool === (pillCollapsed ? 'Expand Inline' : 'Collapse Inline')}
+              />
+              <motion.button
+                type="button"
+                onClick={togglePillCollapse}
+                onMouseEnter={() =>
+                  handlePillEnter('collapse', pillCollapsed ? 'Expand Inline' : 'Collapse Inline')
+                }
+                onMouseLeave={handlePillLeave}
+                aria-expanded={!pillCollapsed}
+                aria-label={pillCollapsed ? 'Expand Inline' : 'Collapse Inline'}
+                title={pillCollapsed ? 'Expand Inline' : 'Collapse Inline'}
+                transition={pillSpring}
+                style={{
+                  width: PILL_BTN,
+                  height: PILL_BTN,
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: 'none',
+                  background: pillHoverKey === 'collapse' ? 'rgba(255,255,255,0.08)' : 'transparent',
+                  cursor: 'pointer',
+                  padding: 0,
+                  flexShrink: 0,
+                  transition: 'background 0.15s',
+                }}
+              >
+                <div style={{
+                  width: 3,
+                  height: 14,
+                  borderRadius: 2,
+                  background: 'rgba(255,255,255,0.55)',
+                  transform: 'rotate(-12deg)',
+                }} />
+              </motion.button>
+            </div>
 
             <motion.div
               initial={false}
@@ -491,11 +593,12 @@ export default function Home({ selectedText, originalRange }: HomeProps) {
                 pointerEvents: pillCollapsed ? 'none' : 'auto',
               }}
             >
-              <div style={{ width: 16, height: 1, background: 'rgba(255,255,255,0.08)', margin: '2px 0 3px' }} />
+              <div style={{ width: 18, height: 1, background: 'rgba(255,255,255,0.08)', margin: '2px 0 3px' }} />
 
               <div
                 style={{
-                  maxHeight: 'min(64vh, 460px)',
+                  position: 'relative',
+                  maxHeight: 'min(50vh, 380px)',
                   overflowY: 'auto',
                   overflowX: 'hidden',
                   scrollbarWidth: 'none',
@@ -504,26 +607,38 @@ export default function Home({ selectedText, originalRange }: HomeProps) {
                   alignItems: 'center',
                   gap: 0,
                   width: '100%',
+                  maskImage: 'linear-gradient(to bottom, transparent 0%, black 6px, black calc(100% - 6px), transparent 100%)',
+                  WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 6px, black calc(100% - 6px), transparent 100%)',
                 }}
               >
                 {TOOLS.map(t => {
                   const isActive = activePanel === t.id
+                  const hk = t.id ?? ''
+                  const hoveredHere = pillHoverKey === hk
+                  const bg = isActive
+                    ? 'rgba(255,255,255,0.14)'
+                    : hoveredHere
+                      ? 'rgba(255,255,255,0.08)'
+                      : 'transparent'
                   return (
                     <div key={t.id} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                      <Tooltip text={t.label} visible={hoveredTool === t.label && !isActive} />
+                      <Tooltip text={t.label} visible={hoveredTool === t.label} />
                       <button
+                        type="button"
                         onClick={() => toggle(t.id)}
-                        onMouseEnter={() => handleHoverStart(t.label)}
-                        onMouseLeave={handleHoverEnd}
+                        onMouseEnter={() => handlePillEnter(hk, t.label)}
+                        onMouseLeave={handlePillLeave}
+                        title={t.label}
+                        aria-label={t.label}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          width: 28,
-                          height: 28,
+                          width: PILL_BTN,
+                          height: PILL_BTN,
                           borderRadius: 8,
                           border: 'none',
-                          background: isActive ? 'rgba(255,255,255,0.14)' : 'transparent',
+                          background: bg,
                           color: isActive ? '#ffffff' : 'rgba(255,255,255,0.48)',
                           cursor: 'pointer',
                           transition: 'background 0.15s, color 0.15s',
@@ -538,18 +653,21 @@ export default function Home({ selectedText, originalRange }: HomeProps) {
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                   <Tooltip text="Notebooks" visible={hoveredTool === 'Notebooks'} />
                   <button
+                    type="button"
                     onClick={() => window.open('http://localhost:3000/dashboard', '_blank')}
-                    onMouseEnter={() => handleHoverStart('Notebooks')}
-                    onMouseLeave={handleHoverEnd}
+                    onMouseEnter={() => handlePillEnter('notebooks', 'Notebooks')}
+                    onMouseLeave={handlePillLeave}
+                    title="Notebooks"
+                    aria-label="Notebooks"
                     style={{
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      width: 28,
-                      height: 28,
+                      width: PILL_BTN,
+                      height: PILL_BTN,
                       borderRadius: 8,
                       border: 'none',
-                      background: 'transparent',
+                      background: pillHoverKey === 'notebooks' ? 'rgba(255,255,255,0.08)' : 'transparent',
                       color: 'rgba(255,255,255,0.48)',
                       cursor: 'pointer',
                       transition: 'background 0.15s, color 0.15s',
@@ -559,23 +677,26 @@ export default function Home({ selectedText, originalRange }: HomeProps) {
                   ><INotebook /></button>
                 </div>
 
-                <div style={{ width: 16, height: 1, background: 'rgba(255,255,255,0.08)', margin: '3px 0' }} />
+                <div style={{ width: 18, height: 1, background: 'rgba(255,255,255,0.08)', margin: '3px 0' }} />
 
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                   <Tooltip text="Hide extension" visible={hoveredTool === 'Hide extension'} />
                   <button
+                    type="button"
                     onClick={toggleHidden}
-                    onMouseEnter={() => handleHoverStart('Hide extension')}
-                    onMouseLeave={handleHoverEnd}
+                    onMouseEnter={() => handlePillEnter('hide', 'Hide extension')}
+                    onMouseLeave={handlePillLeave}
+                    title="Hide extension"
+                    aria-label="Hide extension"
                     style={{
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      width: 28,
-                      height: 28,
+                      width: PILL_BTN,
+                      height: PILL_BTN,
                       borderRadius: 8,
                       border: 'none',
-                      background: 'transparent',
+                      background: pillHoverKey === 'hide' ? 'rgba(255,255,255,0.08)' : 'transparent',
                       color: 'rgba(255,255,255,0.48)',
                       cursor: 'pointer',
                       transition: 'background 0.15s, color 0.15s',
@@ -592,12 +713,17 @@ export default function Home({ selectedText, originalRange }: HomeProps) {
         )}
       </div>
 
-      {!hidden && notesOpen.map((n, i) => (
+      {!hidden && paperNotes.map(n => (
         <Notes
-          key={i}
+          key={n.id}
           initialX={n.x}
           initialY={n.y}
-          onClose={() => setNotesOpen(prev => prev.filter((_, idx) => idx !== i))}
+          initialW={n.w}
+          initialH={n.h}
+          initialContent={n.content}
+          initialPaperStyle={n.paperStyle}
+          onClose={() => closePaperNote(n.id)}
+          onUpdate={(patch) => updatePaperNote(n.id, patch)}
         />
       ))}
 

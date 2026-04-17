@@ -103,6 +103,7 @@ export default function Draw({ onClose }: DrawProps) {
   /* ─── Restore saved draw paths from backend on mount ─── */
   useEffect(() => {
     try {
+      if (!chrome.runtime?.id) return
       chrome.runtime.sendMessage(
         { type: 'LOAD_ANNOTATIONS', payload: { pageUrl: window.location.href } },
         (response) => {
@@ -113,6 +114,9 @@ export default function Draw({ onClose }: DrawProps) {
           if (!svg) return
 
           for (const item of paths) {
+            const setInlineId = (el: Element) => {
+              if (typeof item.id === 'string' && item.id) el.setAttribute('data-inline-id', item.id)
+            }
             if (item.type === 'path') {
               const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
               path.setAttribute('d', String(item.d))
@@ -123,6 +127,7 @@ export default function Draw({ onClose }: DrawProps) {
               path.setAttribute('stroke-linejoin', 'round')
               if (item.opacity) path.setAttribute('opacity', String(item.opacity))
               path.setAttribute('data-inline-draw', 'true')
+              setInlineId(path)
               svg.appendChild(path)
             } else if (item.type === 'rect') {
               const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
@@ -135,6 +140,7 @@ export default function Draw({ onClose }: DrawProps) {
               rect.setAttribute('fill', 'none')
               rect.setAttribute('rx', '2')
               rect.setAttribute('data-inline-draw', 'true')
+              setInlineId(rect)
               svg.appendChild(rect)
             } else if (item.type === 'ellipse') {
               const ellipse = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse')
@@ -146,10 +152,12 @@ export default function Draw({ onClose }: DrawProps) {
               ellipse.setAttribute('stroke-width', String(item.strokeWidth))
               ellipse.setAttribute('fill', 'none')
               ellipse.setAttribute('data-inline-draw', 'true')
+              setInlineId(ellipse)
               svg.appendChild(ellipse)
             } else if (item.type === 'arrow') {
               const g = document.createElementNS('http://www.w3.org/2000/svg', 'g')
               g.setAttribute('data-inline-draw', 'true')
+              setInlineId(g)
               const line = document.createElementNS('http://www.w3.org/2000/svg', 'line')
               line.setAttribute('x1', String(item.x1))
               line.setAttribute('y1', String(item.y1))
@@ -174,6 +182,7 @@ export default function Draw({ onClose }: DrawProps) {
               line.setAttribute('stroke-width', String(item.strokeWidth))
               line.setAttribute('stroke-linecap', 'round')
               line.setAttribute('data-inline-draw', 'true')
+              setInlineId(line)
               svg.appendChild(line)
             }
           }
@@ -494,14 +503,25 @@ export default function Draw({ onClose }: DrawProps) {
       }
     }
 
+    function ensureInlineId(el: Element): string {
+      let id = el.getAttribute('data-inline-id')
+      if (!id) {
+        id = `dp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+        el.setAttribute('data-inline-id', id)
+      }
+      return id
+    }
+
     function serializeDrawElements(): Record<string, unknown>[] {
       if (!svgEl) return []
       const els = svgEl.querySelectorAll('[data-inline-draw]')
       const result: Record<string, unknown>[] = []
       els.forEach((el) => {
         const tag = el.tagName.toLowerCase()
+        const id = ensureInlineId(el)
         if (tag === 'path') {
           result.push({
+            id,
             type: 'path',
             d: el.getAttribute('d') ?? '',
             stroke: el.getAttribute('stroke') ?? '',
@@ -511,6 +531,7 @@ export default function Draw({ onClose }: DrawProps) {
           })
         } else if (tag === 'rect') {
           result.push({
+            id,
             type: 'rect',
             x: el.getAttribute('x') ?? '0',
             y: el.getAttribute('y') ?? '0',
@@ -521,6 +542,7 @@ export default function Draw({ onClose }: DrawProps) {
           })
         } else if (tag === 'ellipse') {
           result.push({
+            id,
             type: 'ellipse',
             cx: el.getAttribute('cx') ?? '0',
             cy: el.getAttribute('cy') ?? '0',
@@ -531,6 +553,7 @@ export default function Draw({ onClose }: DrawProps) {
           })
         } else if (tag === 'line') {
           result.push({
+            id,
             type: 'line',
             x1: el.getAttribute('x1') ?? '0',
             y1: el.getAttribute('y1') ?? '0',
@@ -544,6 +567,7 @@ export default function Draw({ onClose }: DrawProps) {
           const polygon = el.querySelector('polygon')
           if (line && polygon) {
             result.push({
+              id,
               type: 'arrow',
               x1: line.getAttribute('x1') ?? '0',
               y1: line.getAttribute('y1') ?? '0',
@@ -562,17 +586,23 @@ export default function Draw({ onClose }: DrawProps) {
 
     function persistDrawData() {
       const serialized = serializeDrawElements()
-      if (serialized.length > 0) {
-        try {
-          chrome.runtime.sendMessage(
-            {
-              type: 'SAVE_ANNOTATIONS',
-              payload: { pageUrl: window.location.href, featureKey: 'drawPaths', data: serialized },
+      try {
+        if (!chrome.runtime?.id) return
+        chrome.runtime.sendMessage(
+          {
+            type: 'SAVE_ANNOTATIONS',
+            payload: {
+              pageUrl: window.location.href,
+              featureKey: 'drawPaths',
+              data: serialized,
+              pageTitle: document.title,
+              domain: window.location.hostname,
+              clearedAt: serialized.length === 0 ? Date.now() : null,
             },
-            () => { if (chrome.runtime.lastError) { /* ignore */ } },
-          )
-        } catch { /* extension context unavailable */ }
-      }
+          },
+          () => { if (chrome.runtime.lastError) { /* ignore */ } },
+        )
+      } catch { /* extension context unavailable */ }
     }
 
     function end() {

@@ -5,6 +5,7 @@ import { ExternalLink, Clock, Globe, Tag, MapPin, FileText, PenTool, BrainCircui
 import type { Note, NoteType } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { formatDistanceToNow, format } from 'date-fns'
+import { prettyNotePreview } from '@/lib/note-preview'
 
 const TYPE_META: Record<NoteType, { label: string; icon: React.ElementType; color: string; bg: string }> = {
   text:        { label: 'Text Note',   icon: FileText,     color: '#6C91C2', bg: '#DCE6F4' },
@@ -98,10 +99,10 @@ export default function NoteDetailSheet({ note, onClose }: NoteDetailSheetProps)
               <div className="mt-4 mb-2">
                 <p className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Content</p>
                 <div
-                  className="rounded-xl px-4 py-3 text-[13px] leading-relaxed font-medium text-zinc-800 min-h-[72px] border border-transparent"
+                  className="rounded-xl px-4 py-3 text-[13px] leading-relaxed font-medium text-zinc-800 min-h-[72px] border border-transparent whitespace-pre-wrap"
                   style={{ backgroundColor: note.color ?? '#fef9c3' }}
                 >
-                  {note.content || <span className="text-slate-400 italic">No content</span>}
+                  {prettyNotePreview(note) || <span className="text-slate-400 italic">No content</span>}
                 </div>
               </div>
 

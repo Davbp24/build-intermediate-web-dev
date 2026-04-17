@@ -40,10 +40,8 @@ export default async function AnalyticsPage({
           { label: workspaceName, href: `/app/${workspaceId}/dashboard` },
           { label: 'Analytics' },
         ]}
-        title="Analytics"
-        subtitle="Understand your research habits and AI usage at a glance."
       />
-      <div className="p-6 max-w-7xl">
+      <div className="w-full min-w-0 p-6">
         <Suspense fallback={
           <div className="space-y-4">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

@@ -17,6 +17,7 @@ import {
   ExternalLink, Search, Zap, FileText,
 } from 'lucide-react'
 import { MOCK_NOTES } from '@/lib/mock-data'
+import { prettyNotePreviewTruncated } from '@/lib/note-preview'
 
 const NAV_COMMANDS = [
   { label: 'Dashboard',       icon: LayoutDashboard, href: '/app/dashboard', shortcut: 'G D' },
@@ -104,7 +105,7 @@ export default function CommandPalette() {
                     <div className="flex items-center gap-2 w-full">
                       <FileText className="w-4 h-4 shrink-0 text-muted-foreground" />
                       <span className="text-sm font-medium truncate flex-1">
-                        {note.content.slice(0, 60)}{note.content.length > 60 ? '…' : ''}
+                        {prettyNotePreviewTruncated(note, 60)}
                       </span>
                       <span className="text-[10px] text-muted-foreground shrink-0 bg-muted px-1.5 py-0.5 rounded">
                         {note.domain}

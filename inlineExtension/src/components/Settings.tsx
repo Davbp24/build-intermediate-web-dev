@@ -73,15 +73,26 @@ export default function Settings({ onClose, onOpenDashboard }: SettingsProps) {
   const [newDomain, setNewDomain] = useState('')
 
   useEffect(() => {
-    chrome.storage.local.get(['inlineBlockedDomains'], r => {
-      try {
-        const raw = r.inlineBlockedDomains
-        if (typeof raw === 'string') {
-          const parsed = JSON.parse(raw)
-          if (Array.isArray(parsed)) setBlockedDomains(parsed)
-        }
-      } catch { /* keep default */ }
-    })
+    chrome.storage.local.get(
+      ['inlineBlockedDomains', 'inlineScreenReader', 'inlineFocusMode'],
+      (r) => {
+        try {
+          const raw = r.inlineBlockedDomains
+          if (typeof raw === 'string') {
+            const parsed = JSON.parse(raw)
+            if (Array.isArray(parsed)) setBlockedDomains(parsed)
+          }
+        } catch { /* keep default */ }
+        setScreenReader(r.inlineScreenReader === 'true' || r.inlineScreenReader === true)
+        setImmersiveReader(r.inlineFocusMode === 'true' || r.inlineFocusMode === true)
+      },
+    )
+  }, [])
+
+  const toggleScreenReader = useCallback((v: boolean) => {
+    setScreenReader(v)
+    chrome.storage.local.set({ inlineScreenReader: String(v) })
+    document.dispatchEvent(new CustomEvent('inline:screenReader', { detail: { enabled: v } }))
   }, [])
 
   const persistBlocked = useCallback((domains: string[]) => {
@@ -144,7 +155,7 @@ export default function Settings({ onClose, onOpenDashboard }: SettingsProps) {
           border: `1px solid ${C.border}`, borderRadius: C.radiusMd, overflow: 'hidden',
           marginBottom: 16, background: C.surfaceBubble, boxShadow: C.shadowSoft,
         }}>
-          <SettingsRow label="Screen reader" right={<Toggle checked={screenReader} onChange={setScreenReader} />} />
+          <SettingsRow label="Screen reader" right={<Toggle checked={screenReader} onChange={toggleScreenReader} />} />
           <SettingsRow label="High contrast" right={<Toggle checked={highContrast} onChange={toggleHighContrast} />} border />
           <SettingsRow label="Immersive reader" right={<Toggle checked={immersiveReader} onChange={v => {
             setImmersiveReader(v)

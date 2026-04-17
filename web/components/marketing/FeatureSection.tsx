@@ -151,27 +151,31 @@ function OrbitVisual() {
         {ORBIT_NODES.map((node, i) => {
           const r = radii[node.ring - 1]
           const rad = (node.angle * Math.PI) / 180
-          const x = center.x + r * Math.cos(rad)
-          const y = center.y + r * Math.sin(rad)
+          const x = Math.round(center.x + r * Math.cos(rad))
+          const y = Math.round(center.y + r * Math.sin(rad))
           const Icon = node.icon
 
           return (
-            <motion.div
+            <div
               key={node.id}
-              initial={{ opacity: 0, scale: 0.5 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.2 + i * 0.1, type: "spring", stiffness: 200, damping: 20 }}
-              className="absolute w-[44px] h-[44px] rounded-full bg-[#272A35] border border-white/5 shadow-2xl flex items-center justify-center backdrop-blur-md"
+              className="absolute w-[44px] h-[44px] rounded-full bg-[#272A35] border border-white/5 backdrop-blur-md"
               style={{
                 left: `${x}px`,
                 top: `${y}px`,
                 transform: 'translate(-50%, -50%)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)'
+                boxShadow: '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
               }}
             >
-              <Icon />
-            </motion.div>
+              <motion.div
+                className="flex h-full w-full items-center justify-center rounded-full"
+                initial={{ opacity: 0, scale: 0.5 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.2 + i * 0.1, type: 'spring', stiffness: 200, damping: 20 }}
+              >
+                <Icon />
+              </motion.div>
+            </div>
           )
         })}
       </div>

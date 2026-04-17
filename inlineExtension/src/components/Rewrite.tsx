@@ -1,7 +1,11 @@
 import { useState, useRef, useCallback } from 'react'
 import { loadSettings } from '../lib/extensionSettings'
+import { speakWithElevenLabs, stopSpeaking } from '../lib/elevenLabsTts'
 import { PANEL as C, FONT } from '../lib/extensionTheme'
 import { PROMPT_TEMPLATES } from '../lib/promptTemplates'
+import { fetchViaBackground } from '../lib/backgroundFetch'
+import { saveAIResultToHistory } from '../lib/historyApi'
+import { buildAIInsertMark } from '../lib/insertBadge'
 
 /* ─── Icons ─── */
 const ISparkle = () => (
@@ -18,6 +22,18 @@ const ICopy = () => (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="#78716c">
     <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
     <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
+  </svg>
+)
+const IVolume = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#78716c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+  </svg>
+)
+const IVolumeOff = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+    <line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>
   </svg>
 )
 
@@ -59,24 +75,49 @@ export default function Rewrite({ selectedText, originalRange, onClose }: Rewrit
   const [customPrompt, setCustomPrompt] = useState('')
   const [showDiff, setShowDiff] = useState(false)
   const [inserted, setInserted] = useState(false)
+  const [speaking, setSpeaking] = useState(false)
+  const [lastTask, setLastTask] = useState<string>('')
+  const [lastInstruction, setLastInstruction] = useState<string | undefined>(undefined)
   const customRef = useRef<HTMLInputElement>(null)
   const originalContentRef = useRef<string | null>(null)
+
+  function handleSpeak() {
+    if (speaking) { stopSpeaking(); setSpeaking(false); return }
+    if (!result) return
+    void speakWithElevenLabs(result, { onStart: () => setSpeaking(true), onEnd: () => setSpeaking(false) })
+  }
 
   const runTask = useCallback(async (task: string, instruction?: string) => {
     setLoading(true)
     setResult(null)
+    setLastTask(task)
+    setLastInstruction(instruction)
     try {
       const text = selectedText.slice(0, 8000)
       const { apiBaseUrl, accessToken } = await loadSettings()
       const h: Record<string, string> = { 'Content-Type': 'application/json' }
       if (accessToken) h.Authorization = `Bearer ${accessToken}`
-      const res = await fetch(`${apiBaseUrl}/api/ai/extension-light`, {
+      const res = await fetchViaBackground(`${apiBaseUrl}/api/ai/extension-light`, {
         method: 'POST', headers: h,
         body: JSON.stringify({ task, text, instruction }),
       })
       if (res.ok) {
-        const j = await res.json() as { result?: string }
-        setResult(j.result ?? 'No result returned.')
+        const j = await res.json<{ result?: string }>()
+        const output = j.result ?? 'No result returned.'
+        setResult(output)
+        if (j.result) {
+          const kindMap: Record<string, 'ai-rephrase' | 'ai-shorten' | 'ai-summarize' | 'ai-rewrite' | 'ai-custom'> = {
+            rephrase:  'ai-rephrase',
+            shorten:   'ai-shorten',
+            summarize: 'ai-summarize',
+            rewrite:   instruction ? 'ai-custom' : 'ai-rewrite',
+          }
+          void saveAIResultToHistory({
+            kind: kindMap[task] ?? 'ai-custom',
+            selection: text,
+            result: output,
+          })
+        }
       } else {
         setResult('AI request failed. Check your API settings.')
       }
@@ -93,23 +134,22 @@ export default function Rewrite({ selectedText, originalRange, onClose }: Rewrit
       originalContentRef.current = originalRange.toString()
       originalRange.deleteContents()
 
-      const blockquote = document.createElement('blockquote')
-      blockquote.setAttribute('data-inline-citation', 'true')
-      blockquote.style.cssText =
-        'border-left:4px solid #1C1E26;padding:8px 16px;margin:8px 0;' +
-        'background:rgba(253,251,247,0.95);border-radius:0 8px 8px 0;' +
-        'font-style:normal;line-height:1.6;'
-
-      blockquote.appendChild(document.createTextNode(result))
+      // Highlight the inserted text so it is visibly an AI edit, with a
+      // native tooltip naming the exact action. Matches the same styling as
+      // the quick-action AI panel.
+      const mark = buildAIInsertMark(result, lastTask, lastInstruction)
+      mark.style.display = 'inline-block'
+      mark.style.lineHeight = '1.55'
 
       const attr = document.createElement('span')
       attr.className = 'inline-cite-attr'
       attr.style.cssText =
-        'display:block;font-size:10px;color:#78716c;margin-top:6px;font-style:italic;'
+        'display:block;font-size:10px;color:#78716c;margin-top:4px;font-style:italic;'
       attr.textContent = `via Inline · ${new Date().toLocaleString()}`
-      blockquote.appendChild(attr)
+      mark.appendChild(document.createElement('br'))
+      mark.appendChild(attr)
 
-      originalRange.insertNode(blockquote)
+      originalRange.insertNode(mark)
       setInserted(true)
     } catch { /* range may be invalid if user navigated away */ }
   }
@@ -150,7 +190,7 @@ export default function Rewrite({ selectedText, originalRange, onClose }: Rewrit
             <ISparkle />
             <span style={{ fontSize: 13, fontWeight: 500, color: C.accent, letterSpacing: '-0.02em' }}>Rewrite</span>
           </div>
-          <button type="button" onClick={onClose} style={btnIcon}><IClose /></button>
+          <button type="button" onClick={onClose} title="Close" aria-label="Close" style={btnIcon}><IClose /></button>
         </div>
 
         {/* Body */}
@@ -164,7 +204,7 @@ export default function Rewrite({ selectedText, originalRange, onClose }: Rewrit
           <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 500, color: C.text }}>Tone</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 18 }}>
             {TONES.map(t => (
-              <button key={t} type="button" onClick={() => setTone(t)} style={{
+              <button key={t} type="button" onClick={() => setTone(t)} title={`Tone: ${t}`} aria-label={`Tone: ${t}`} style={{
                 padding: '8px 16px', borderRadius: C.radiusPill,
                 border: `1.5px solid ${tone === t ? C.accent : C.border}`,
                 background: tone === t ? C.toneSelectedBg : C.surfaceBubble,
@@ -180,6 +220,8 @@ export default function Rewrite({ selectedText, originalRange, onClose }: Rewrit
           {(['Rephrase', 'Shorten', 'Summarize'] as const).map(a => (
             <button key={a} type="button"
               onClick={() => runTask(a.toLowerCase(), `Tone: ${tone}`)}
+              title={a}
+              aria-label={a}
               style={{
                 display: 'block', width: '100%', textAlign: 'left',
                 padding: '11px 14px', border: 'none', borderRadius: C.radiusPill,
@@ -197,6 +239,8 @@ export default function Rewrite({ selectedText, originalRange, onClose }: Rewrit
             {PROMPT_TEMPLATES.map(t => (
               <button key={t.id} type="button"
                 onClick={() => runTask('rewrite', t.prompt)}
+                title={t.label}
+                aria-label={t.label}
                 style={{
                   padding: '6px 12px', borderRadius: C.radiusPill,
                   border: `1px solid ${C.border}`, background: C.surfaceBubble,
@@ -260,7 +304,7 @@ export default function Rewrite({ selectedText, originalRange, onClose }: Rewrit
           <ISparkle />
           <span style={{ fontSize: 13, fontWeight: 500, color: C.accent, letterSpacing: '-0.02em' }}>Rewrite</span>
         </div>
-        <button type="button" onClick={onClose} style={btnIcon}><IClose /></button>
+        <button type="button" onClick={onClose} title="Close" aria-label="Close" style={btnIcon}><IClose /></button>
       </div>
 
       {/* Result body */}
@@ -290,21 +334,22 @@ export default function Rewrite({ selectedText, originalRange, onClose }: Rewrit
         {/* Action row */}
         {!loading && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14, alignItems: 'center' }}>
-            <button type="button" onClick={handleRetry} style={pillBtn}>Retry</button>
-            <button type="button" onClick={() => { setResult(null); setShowDiff(false); setInserted(false); customRef.current?.focus() }} style={pillBtn}>Refine</button>
-            <button type="button" onClick={() => setShowDiff(d => !d)} style={pillBtn}>{showDiff ? 'Hide diff' : 'Show diff'}</button>
+            <button type="button" onClick={handleRetry} title="Retry" aria-label="Retry" style={pillBtn}>Retry</button>
+            <button type="button" onClick={() => { setResult(null); setShowDiff(false); setInserted(false); customRef.current?.focus() }} title="Refine prompt" aria-label="Refine prompt" style={pillBtn}>Refine</button>
+            <button type="button" onClick={() => setShowDiff(d => !d)} title={showDiff ? 'Hide diff' : 'Show diff'} aria-label={showDiff ? 'Hide diff' : 'Show diff'} style={pillBtn}>{showDiff ? 'Hide diff' : 'Show diff'}</button>
             {!inserted ? (
-              <button type="button" onClick={handleInsert} style={{
+              <button type="button" onClick={handleInsert} title="Insert into page" aria-label="Insert into page" style={{
                 ...pillBtn, background: C.accent, color: '#fff', borderColor: C.accent, fontWeight: 600,
                 boxShadow: C.shadowSoft,
               }}>Insert</button>
             ) : (
-              <button type="button" onClick={handleUndo} style={{
+              <button type="button" onClick={handleUndo} title="Undo insert" aria-label="Undo insert" style={{
                 ...pillBtn, background: '#ef4444', color: '#fff', borderColor: '#ef4444', fontWeight: 500,
                 boxShadow: C.shadowSoft,
               }}>Undo</button>
             )}
-            <button type="button" onClick={handleCopy} style={{ ...btnIcon, marginLeft: 'auto' }}><ICopy /></button>
+            <button type="button" onClick={handleSpeak} title={speaking ? 'Stop speaking' : 'Speak'} aria-label={speaking ? 'Stop speaking' : 'Speak'} style={{ ...btnIcon, marginLeft: 'auto' }}>{speaking ? <IVolumeOff /> : <IVolume />}</button>
+            <button type="button" onClick={handleCopy} title="Copy" aria-label="Copy" style={btnIcon}><ICopy /></button>
           </div>
         )}
 
@@ -352,3 +397,4 @@ const pillBtn: React.CSSProperties = {
   boxShadow: C.shadowSoft,
   transition: 'transform 0.15s ease, background 0.15s',
 }
+

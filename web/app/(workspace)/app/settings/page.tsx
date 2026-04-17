@@ -1,49 +1,55 @@
 'use client'
 
-import { useState, useEffect, useTransition, useRef } from 'react'
+import { useState, useEffect, useTransition, useRef, Fragment, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import PageHeader from '@/components/shell/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { signOut } from '@/lib/actions/auth'
 import {
+  DEFAULT_INLINE_VOICE_ID,
+  INLINE_VOICE_PRESETS,
+  normalizeInlineVoiceId,
+} from '@/lib/inlineVoicePresets'
+import {
   Check, Eye, EyeOff,
   Play, Loader2, Plus, X, Globe, Shield,
-  GripVertical, ArrowRight,
-  HelpCircle, LogOut,
+  GripVertical, ArrowRight, AlertTriangle, LogOut,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
-// Types & navigation groups
+// Types & navigation (same shell pattern as workspace settings)
 // ---------------------------------------------------------------------------
-type Tab = 'account' | 'appearance' | 'ai-voice' | 'extension' | 'integrations' | 'notifications'
+type Tab = 'general' | 'security' | 'notifications' | 'appearance' | 'integrations' | 'ai-voice' | 'extension' | 'danger'
 
-/** Flat tabs for horizontal nav */
-const PROFILE_TABS: { id: Tab; label: string }[] = [
-  { id: 'account', label: 'General' },
+const PROFILE_TABS: { id: Tab; label: string; danger?: boolean }[] = [
+  { id: 'general', label: 'General' },
+  { id: 'security', label: 'Security' },
   { id: 'notifications', label: 'Notifications' },
   { id: 'appearance', label: 'Themes' },
   { id: 'integrations', label: 'Apps & integrations' },
   { id: 'ai-voice', label: 'AI & Voice' },
   { id: 'extension', label: 'Extension' },
+  { id: 'danger', label: 'Delete account', danger: true },
 ]
 
 // ---------------------------------------------------------------------------
-// Shared helpers
+// Layout helpers (match workspace settings page)
 // ---------------------------------------------------------------------------
 function SectionCard({ title, description, children, action }: {
   title: string; description?: string; children: React.ReactNode; action?: React.ReactNode
 }) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-          {description && <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed max-w-xl">{description}</p>}
+          <h3 className="text-base font-semibold text-foreground tracking-tight">{title}</h3>
+          {description && <p className="text-sm text-muted-foreground mt-1 leading-relaxed max-w-xl">{description}</p>}
         </div>
         {action}
       </div>
-      <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+      <div className="bg-card border border-border rounded-2xl p-6 space-y-5">
         {children}
       </div>
     </div>
@@ -62,15 +68,21 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
   )
 }
 
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+function ToggleRow({ label, description, checked, onChange }: { label: string; description: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <button
-      type="button"
-      onClick={() => onChange(!checked)}
-      className={cn('relative shrink-0 w-9 h-5 rounded-full transition-colors duration-200 cursor-pointer', checked ? 'bg-primary' : 'bg-muted-foreground/30')}
-    >
-      <span className={cn('absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-background ring-1 ring-border/60 transition-transform duration-200', checked && 'translate-x-4')} />
-    </button>
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <p className="text-sm font-medium text-foreground">{label}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+      </div>
+      <button
+        type="button"
+        onClick={() => onChange(!checked)}
+        className={cn('relative shrink-0 w-9 h-5 rounded-full transition-colors duration-200 cursor-pointer', checked ? 'bg-primary' : 'bg-muted-foreground/30')}
+      >
+        <span className={cn('absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-background ring-1 ring-border/60 transition-transform duration-200', checked && 'translate-x-4')} />
+      </button>
+    </div>
   )
 }
 
@@ -97,9 +109,11 @@ function SaveBadge({ saved }: { saved: boolean }) {
 }
 
 // ---------------------------------------------------------------------------
-// Account
+// General (identity only — mirrors workspace “General” → Workspace Identity)
 // ---------------------------------------------------------------------------
-function AccountTab() {
+const PROFILE_ACCENT = '#6C91C2'
+
+function GeneralTab() {
   const [name, setName] = useState('John Doe')
   const [email, setEmail] = useState('john@example.com')
   const [saved, setSaved] = useState(false)
@@ -134,53 +148,82 @@ function AccountTab() {
   }
 
   return (
-    <div className="space-y-6">
-      <SectionCard title="Profile" description="Your display name and email address.">
-        <Row label="Avatar">
+    <div className="space-y-8">
+      <SectionCard title="Profile Identity" description="Customize your name, icon, and email.">
+        <Row label="Icon / Logo">
           <div className="flex items-center gap-4">
             <div
-              className="w-14 h-14 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
               onClick={() => fileRef.current?.click()}
+              className="flex h-14 w-14 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-2xl text-xl font-bold text-white transition-opacity hover:opacity-80"
+              style={{ backgroundColor: PROFILE_ACCENT }}
             >
               {avatar
-                ? <img src={avatar} alt="avatar" className="w-full h-full object-cover" />
-                : <span className="text-primary font-bold text-lg">{name.charAt(0).toUpperCase()}</span>
-              }
+                ? <img src={avatar} alt="avatar" className="h-full w-full object-cover" />
+                : name.charAt(0).toUpperCase()}
             </div>
             <div>
-              <Button variant="outline" size="sm" className="cursor-pointer" onClick={() => fileRef.current?.click()}>Upload Photo</Button>
-              <p className="text-xs text-muted-foreground mt-1.5">PNG, JPG up to 4 MB</p>
+              <Button variant="outline" size="sm" className="cursor-pointer" onClick={() => fileRef.current?.click()}>
+                Upload Icon
+              </Button>
+              <p className="mt-1.5 text-xs text-muted-foreground">PNG, SVG, JPG</p>
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
             </div>
           </div>
         </Row>
-        <Row label="Full name"><Input value={name} onChange={e => setName(e.target.value)} /></Row>
-        <Row label="Email"><Input value={email} onChange={e => setEmail(e.target.value)} type="email" /></Row>
+
+        <Row label="Name" hint="How you appear to teammates.">
+          <Input value={name} onChange={e => setName(e.target.value)} placeholder="Your name" />
+        </Row>
+
+        <Row label="Email" hint="Your login email address.">
+          <Input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="you@company.com" />
+        </Row>
+
         <div className="flex items-center justify-between pt-1">
           <SaveBadge saved={saved} />
-          <Button size="sm" onClick={handleSave} disabled={pending} className="cursor-pointer ml-auto">
-            {pending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}Save changes
+          <Button size="sm" onClick={handleSave} disabled={pending} className="ml-auto cursor-pointer">
+            {pending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+            Save Changes
           </Button>
         </div>
       </SectionCard>
+    </div>
+  )
+}
 
+// ---------------------------------------------------------------------------
+// Security (connected accounts, password, 2FA, session)
+// ---------------------------------------------------------------------------
+function SecurityTab() {
+  const providers = [{ name: 'Google', icon: '🔵', connected: false }, { name: 'Microsoft', icon: '🟦', connected: true }] as const
+
+  return (
+    <div className="space-y-8">
       <SectionCard title="Connected accounts" description="OAuth providers for single sign-on.">
-        {[{ name: 'Google', icon: '🔵', connected: false }, { name: 'Microsoft', icon: '🟦', connected: true }].map(a => (
-          <div key={a.name} className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-lg">{a.icon}</span>
-              <span className="text-sm font-medium">{a.name}</span>
+        <div className="space-y-0">
+          {providers.map((a, i) => (
+            <div key={a.name}>
+              {i > 0 && <div className="h-px bg-border" />}
+              <div className="flex items-center justify-between py-3 text-sm">
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">{a.icon}</span>
+                  <span className="font-medium text-foreground">{a.name}</span>
+                </div>
+                <Button variant={a.connected ? 'outline' : 'default'} size="sm" className="cursor-pointer">
+                  {a.connected ? 'Disconnect' : 'Connect'}
+                </Button>
+              </div>
             </div>
-            <Button variant={a.connected ? 'outline' : 'default'} size="sm" className="cursor-pointer">
-              {a.connected ? 'Disconnect' : 'Connect'}
-            </Button>
-          </div>
-        ))}
+          ))}
+        </div>
       </SectionCard>
 
-      <SectionCard title="Security">
+      <SectionCard title="Password & 2FA" description="Protect your account with a strong password and optional two-factor authentication.">
         <Row label="Password">
-          <a href="/auth/reset-password" className="inline-flex items-center justify-center gap-1.5 h-9 px-3 text-sm font-medium rounded-md border border-border bg-background hover:bg-accent/30 transition-colors cursor-pointer">
+          <a
+            href="/auth/reset-password"
+            className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent/30"
+          >
             Change password
           </a>
         </Row>
@@ -188,6 +231,134 @@ function AccountTab() {
           <Button variant="outline" size="sm" className="cursor-pointer">Enable 2FA</Button>
         </Row>
       </SectionCard>
+
+      <SectionCard title="Session" description="Sign out of Inline on this device.">
+        <div className="flex items-center justify-between gap-4 py-0.5">
+          <div>
+            <p className="text-sm font-medium text-foreground">Sign out</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">You will need to sign in again to access your workspace.</p>
+          </div>
+          <form action={signOut}>
+            <Button type="submit" variant="outline" size="sm" className="cursor-pointer gap-1.5">
+              <LogOut className="h-3.5 w-3.5" />
+              Sign out
+            </Button>
+          </form>
+        </div>
+      </SectionCard>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Danger zone (mirrors workspace Delete workspace tab)
+// ---------------------------------------------------------------------------
+function AccountDangerTab() {
+  const router = useRouter()
+  const [email, setEmail] = useState('')
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [confirmText, setConfirmText] = useState('')
+  const [deleting, setDeleting] = useState(false)
+
+  useEffect(() => {
+    setEmail(localStorage.getItem('inline_profile_email') || '')
+  }, [])
+
+  async function handleDelete() {
+    if (!email || confirmText !== email) return
+    setDeleting(true)
+    try {
+      localStorage.removeItem('inline_profile_name')
+      localStorage.removeItem('inline_profile_email')
+      localStorage.removeItem('inline_profile_avatar')
+      await new Promise(r => setTimeout(r, 600))
+      router.push('/')
+    } catch {
+      setDeleting(false)
+    }
+  }
+
+  return (
+    <div className="space-y-8">
+      <SectionCard title="Danger Zone" description="These actions are permanent and cannot be undone.">
+        <div className="flex items-center justify-between py-1">
+          <div>
+            <p className="text-sm font-medium">Deactivate account</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Hide your profile and pause activity until you sign back in.</p>
+          </div>
+          <Button size="sm" variant="outline" className="cursor-pointer border-amber-300 text-amber-600 hover:bg-amber-50">
+            Deactivate
+          </Button>
+        </div>
+        <div className="h-px bg-border" />
+        <div className="flex items-center justify-between py-1">
+          <div>
+            <p className="text-sm font-medium text-destructive">Delete account</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Permanently removes your profile and local preferences from this browser.</p>
+          </div>
+          <Button size="sm" variant="destructive" className="cursor-pointer" onClick={() => setShowDeleteModal(true)}>
+            Delete
+          </Button>
+        </div>
+      </SectionCard>
+
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowDeleteModal(false)}>
+          <div className="absolute inset-0 bg-black/40" />
+          <div
+            className="relative w-full max-w-sm space-y-4 rounded-2xl border border-border bg-card p-6 text-card-foreground"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-destructive/10">
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold">Delete your account?</h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  This action is irreversible for data stored locally in this browser.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground">
+                Type <strong className="font-mono text-foreground">{email || 'your email'}</strong> to confirm:
+              </p>
+              <Input
+                value={confirmText}
+                onChange={e => setConfirmText(e.target.value)}
+                placeholder={email || 'email@example.com'}
+                className="font-mono text-sm"
+                autoFocus
+              />
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 cursor-pointer"
+                onClick={() => {
+                  setShowDeleteModal(false)
+                  setConfirmText('')
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="flex-1 cursor-pointer"
+                disabled={!email || confirmText !== email || deleting}
+                onClick={handleDelete}
+              >
+                {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Delete account'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -229,7 +400,7 @@ function AppearanceTab() {
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <SectionCard title="Select theme" description="Applies accent surfaces across the dashboard." action={<SaveBadge saved={saved} />}>
         <div className="grid grid-cols-3 gap-3">
           {THEMES.map(t => (
@@ -298,61 +469,104 @@ function NotificationsTab() {
   ]
 
   return (
-    <SectionCard title="Notifications" description="Choose how Inline communicates with you.">
-      <div className="space-y-4">
+    <div className="space-y-8">
+      <SectionCard title="Notifications" description="Choose how Inline communicates with you.">
         {rows.map((r, i) => (
-          <div key={r.key}>
+          <Fragment key={r.key}>
             {i > 0 && <div className="h-px bg-border" />}
-            <div className="flex items-center justify-between pt-2 gap-4">
-              <div>
-                <p className="text-sm font-medium">{r.label}</p>
-                <p className="text-xs text-muted-foreground">{r.desc}</p>
-              </div>
-              <Toggle checked={prefs[r.key]} onChange={() => flip(r.key)} />
-            </div>
-          </div>
+            <ToggleRow
+              label={r.label}
+              description={r.desc}
+              checked={prefs[r.key]}
+              onChange={() => flip(r.key)}
+            />
+          </Fragment>
         ))}
-      </div>
-    </SectionCard>
+      </SectionCard>
+    </div>
   )
 }
 
 // ---------------------------------------------------------------------------
 // AI & Voice
 // ---------------------------------------------------------------------------
-const VOICE_OPTIONS = [
-  { id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel — Calm, Professional' },
-  { id: 'AZnzlk1XvdvUeBnXmlld', name: 'Domi — Confident, Clear'     },
-  { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Bella — Warm, Friendly'      },
-  { id: 'ErXwobaYiN019PkySvjV',  name: 'Antoni — Deep, Authoritative'},
-]
+function syncVoiceToChromeExtension(payload: {
+  elevenLabsKey: string
+  voiceId: string
+  stability: string
+  similarity: string
+}) {
+  const extId = process.env.NEXT_PUBLIC_CHROME_EXTENSION_ID
+  if (!extId || typeof window === 'undefined') return
+  const w = window as unknown as {
+    chrome?: { runtime?: { sendMessage: (extensionId: string, message: unknown, responseCallback?: () => void) => void } }
+  }
+  try {
+    w.chrome?.runtime?.sendMessage(extId, {
+      type: 'INLINE_SYNC_VOICE_SETTINGS',
+      payload,
+    }, () => { /* optional: ignore lastError */ })
+  } catch {
+    /* not Chrome or extension unavailable */
+  }
+}
 
 function AIVoiceTab() {
   const [openaiKey, setOpenaiKey] = useState('')
   const [elevenKey, setElevenKey] = useState('')
-  const [voiceId,   setVoiceId]   = useState('21m00Tcm4TlvDq8ikWAM')
+  const [voiceId,   setVoiceId]   = useState(DEFAULT_INLINE_VOICE_ID)
   const [saved,     setSaved]     = useState(false)
   const [pending,   start]        = useTransition()
   const [testState, setTest]      = useState<'idle' | 'playing'>('idle')
   const [autocomp,  setAutocomp]  = useState(true)
+  const [voiceChat, setVoiceChat] = useState(false)
+  const [screenReader, setScreenReader] = useState(false)
+  const [stability, setStability] = useState(0.5)
+  const [similarity, setSimilarity] = useState(0.75)
 
   useEffect(() => {
     setOpenaiKey(localStorage.getItem('inline_openai_key') || '')
     setElevenKey(localStorage.getItem('inline_elevenlabs_key') || '')
-    setVoiceId(localStorage.getItem('inline_voice_id') || '21m00Tcm4TlvDq8ikWAM')
+    const rawVoice = localStorage.getItem('inline_voice_id')
+    const normVoice = normalizeInlineVoiceId(rawVoice)
+    setVoiceId(normVoice)
+    if (rawVoice !== normVoice) localStorage.setItem('inline_voice_id', normVoice)
     setAutocomp(localStorage.getItem('inline_autocomplete') !== 'false')
+    setVoiceChat(localStorage.getItem('inline_voice_chat') === 'true')
+    setScreenReader(localStorage.getItem('inline_screen_reader') === 'true')
+    setStability(parseFloat(localStorage.getItem('inline_voice_stability') || '0.5'))
+    setSimilarity(parseFloat(localStorage.getItem('inline_voice_similarity') || '0.75'))
   }, [])
 
   function handleSave() {
     start(async () => {
+      const vid = normalizeInlineVoiceId(voiceId)
+      setVoiceId(vid)
       localStorage.setItem('inline_openai_key', openaiKey)
       localStorage.setItem('inline_elevenlabs_key', elevenKey)
-      localStorage.setItem('inline_voice_id', voiceId)
+      localStorage.setItem('inline_voice_id', vid)
       localStorage.setItem('inline_autocomplete', String(autocomp))
+      localStorage.setItem('inline_voice_chat', String(voiceChat))
+      localStorage.setItem('inline_screen_reader', String(screenReader))
+      localStorage.setItem('inline_voice_stability', String(stability))
+      localStorage.setItem('inline_voice_similarity', String(similarity))
       const _chrome = (typeof window !== 'undefined' ? (window as unknown as Record<string, unknown>).chrome : undefined) as (undefined | { storage?: { local?: { set: (v: Record<string, unknown>) => void } } })
       if (_chrome?.storage?.local) {
-        _chrome.storage.local.set({ inlineOpenAIKey: openaiKey, inlineElevenLabsKey: elevenKey, inlineVoiceId: voiceId })
+        _chrome.storage.local.set({
+          inlineOpenAIKey: openaiKey,
+          inlineElevenLabsKey: elevenKey,
+          inlineVoiceId: vid,
+          inlineScreenReader: String(screenReader),
+          inlineVoiceStability: String(stability),
+          inlineVoiceSimilarity: String(similarity),
+        })
       }
+      syncVoiceToChromeExtension({
+        elevenLabsKey: elevenKey,
+        voiceId: vid,
+        stability: String(stability),
+        similarity: String(similarity),
+      })
       await new Promise(r => setTimeout(r, 400))
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
@@ -360,27 +574,49 @@ function AIVoiceTab() {
   }
 
   async function testVoice() {
-    if (!elevenKey) { window.speechSynthesis?.speak(new SpeechSynthesisUtterance('Voice preview: Inline AI ready.')); return }
     setTest('playing')
     try {
-      const resp = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+      if (elevenKey) {
+        const resp = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'xi-api-key': elevenKey },
+          body: JSON.stringify({ text: 'Hello, this is your Inline voice assistant.', model_id: 'eleven_multilingual_v2', voice_settings: { stability, similarity_boost: similarity } }),
+        })
+        if (resp.ok) {
+          const blob = await resp.blob()
+          const url = URL.createObjectURL(blob)
+          const audio = new Audio(url)
+          audio.play()
+          audio.onended = () => { URL.revokeObjectURL(url); setTest('idle') }
+        } else setTest('idle')
+        return
+      }
+
+      const res = await fetch('/api/tts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'xi-api-key': elevenKey },
-        body: JSON.stringify({ text: 'Hello, this is your Inline voice assistant.', model_id: 'eleven_monolingual_v1', voice_settings: { stability: 0.5, similarity_boost: 0.75 } }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: 'Hello, this is your Inline voice assistant.',
+          voiceId,
+          stability,
+          similarityBoost: similarity,
+        }),
       })
-      if (resp.ok) {
-        const blob = await resp.blob()
-        const url  = URL.createObjectURL(blob)
+      if (res.ok) {
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
         const audio = new Audio(url)
         audio.play()
         audio.onended = () => { URL.revokeObjectURL(url); setTest('idle') }
       } else setTest('idle')
-    } catch { setTest('idle') }
+    } catch {
+      setTest('idle')
+    }
   }
 
   return (
-    <div className="space-y-6">
-      <SectionCard title="API keys" description="Stored locally and synced to the extension. Never sent to Inline servers." action={<SaveBadge saved={saved} />}>
+    <div className="space-y-8">
+      <SectionCard title="API keys" description="Stored locally and synced to the extension. Never sent to Inline servers. Set NEXT_PUBLIC_CHROME_EXTENSION_ID in .env.local (extension ID from chrome://extensions) so Save also pushes voice settings to the extension when the dashboard is open in Chrome." action={<SaveBadge saved={saved} />}>
         <Row label="OpenAI API key" hint="Used for AI Copilot features.">
           <MaskedInput value={openaiKey} onChange={setOpenaiKey} placeholder="sk-…" />
         </Row>
@@ -394,15 +630,20 @@ function AIVoiceTab() {
         </div>
       </SectionCard>
 
-      <SectionCard title="Voice selection" description="The voice used for AI read-aloud.">
+      <SectionCard title="Voice selection" description="The voice used for AI read-aloud across the dashboard and extension (ElevenLabs only — no browser voice).">
         <div className="space-y-2">
-          {VOICE_OPTIONS.map(v => (
+          {INLINE_VOICE_PRESETS.map(v => (
             <button key={v.id} type="button" onClick={() => setVoiceId(v.id)}
               className={cn('w-full flex items-center justify-between px-3 py-2 rounded-lg border text-sm transition-colors cursor-pointer',
                 voiceId === v.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/30'
               )}>
-              <span>{v.name}</span>
-              {voiceId === v.id && <Check className="w-3.5 h-3.5 text-primary" />}
+              <span className="text-left">
+                <span className="font-medium text-foreground">{v.name}</span>
+                <span className="block text-xs text-muted-foreground mt-0.5">
+                  {v.gender === 'female' ? 'Female' : 'Male'} · {v.subtitle}
+                </span>
+              </span>
+              {voiceId === v.id && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
             </button>
           ))}
         </div>
@@ -414,14 +655,52 @@ function AIVoiceTab() {
         </div>
       </SectionCard>
 
-      <SectionCard title="AI Copilot">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-medium">Context autocomplete</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Ghost-text suggestions in sticky notes.</p>
+      <SectionCard title="Voice tuning" description="Adjust voice characteristics for ElevenLabs TTS.">
+        <Row label="Stability" hint="Higher = more consistent, lower = more expressive.">
+          <div className="flex items-center gap-3">
+            <input type="range" min="0" max="1" step="0.05" value={stability}
+              onChange={e => { const v = parseFloat(e.target.value); setStability(v); localStorage.setItem('inline_voice_stability', String(v)) }}
+              className="flex-1 accent-primary cursor-pointer" />
+            <span className="w-8 text-right text-xs font-mono text-muted-foreground">{stability.toFixed(2)}</span>
           </div>
-          <Toggle checked={autocomp} onChange={v => { setAutocomp(v); localStorage.setItem('inline_autocomplete', String(v)) }} />
-        </div>
+        </Row>
+        <Row label="Similarity boost" hint="Higher = closer to original voice, lower = more variation.">
+          <div className="flex items-center gap-3">
+            <input type="range" min="0" max="1" step="0.05" value={similarity}
+              onChange={e => { const v = parseFloat(e.target.value); setSimilarity(v); localStorage.setItem('inline_voice_similarity', String(v)) }}
+              className="flex-1 accent-primary cursor-pointer" />
+            <span className="w-8 text-right text-xs font-mono text-muted-foreground">{similarity.toFixed(2)}</span>
+          </div>
+        </Row>
+      </SectionCard>
+
+      <SectionCard title="Voice behavior">
+        <ToggleRow
+          label="Voice replies in chat"
+          description="Automatically speak AI responses in the workspace chat panel."
+          checked={voiceChat}
+          onChange={v => { setVoiceChat(v); localStorage.setItem('inline_voice_chat', String(v)) }}
+        />
+        <ToggleRow
+          label="Extension screen reader"
+          description="Auto-read AI results aloud in the browser extension."
+          checked={screenReader}
+          onChange={v => {
+            setScreenReader(v)
+            localStorage.setItem('inline_screen_reader', String(v))
+            const _chrome = (typeof window !== 'undefined' ? (window as unknown as Record<string, unknown>).chrome : undefined) as (undefined | { storage?: { local?: { set: (v: Record<string, unknown>) => void } } })
+            if (_chrome?.storage?.local) _chrome.storage.local.set({ inlineScreenReader: String(v) })
+          }}
+        />
+      </SectionCard>
+
+      <SectionCard title="AI Copilot">
+        <ToggleRow
+          label="Context autocomplete"
+          description="Ghost-text suggestions in sticky notes."
+          checked={autocomp}
+          onChange={v => { setAutocomp(v); localStorage.setItem('inline_autocomplete', String(v)) }}
+        />
       </SectionCard>
     </div>
   )
@@ -458,7 +737,7 @@ function ExtensionTab() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <SectionCard title="Domain blocklist" description="Inline disables itself on these domains." action={<SaveBadge saved={saved} />}>
         <Row label="Add domain">
           <div className="flex gap-2">
@@ -517,34 +796,44 @@ function IntegrationsTab() {
   ])
 
   return (
-    <SectionCard title="Apps & integrations" description="Connect tools you already use.">
-      <ul className="space-y-2">
-        {rows.map(r => (
-          <li key={r.id} className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 px-3 py-3">
-            <GripVertical className="w-4 h-4 text-muted-foreground/50 cursor-grab" />
-            <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground shrink-0">
-              {r.abbr}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium">{r.name}</p>
-              <p className="text-xs text-muted-foreground">{r.connected ? 'Connected' : 'Not connected'}</p>
-            </div>
-            {r.connected ? (
-              <Button type="button" variant="outline" size="sm"
-                className="cursor-pointer text-destructive border-destructive/30 hover:bg-destructive/5"
-                onClick={() => setRows(p => p.map(x => x.id === r.id ? { ...x, connected: false } : x))}>
-                Unbind <X className="w-3 h-3 ml-1" />
-              </Button>
-            ) : (
-              <Button type="button" size="sm" className="cursor-pointer gap-1"
-                onClick={() => setRows(p => p.map(x => x.id === r.id ? { ...x, connected: true } : x))}>
-                Connect <ArrowRight className="w-3 h-3" />
-              </Button>
-            )}
-          </li>
-        ))}
-      </ul>
-    </SectionCard>
+    <div className="space-y-8">
+      <SectionCard title="Apps & integrations" description="Connect tools you already use.">
+        <ul className="space-y-2">
+          {rows.map(r => (
+            <li key={r.id} className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 px-3 py-3">
+              <GripVertical className="h-4 w-4 cursor-grab text-muted-foreground/50" />
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-xs font-bold text-muted-foreground">
+                {r.abbr}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">{r.name}</p>
+                <p className="text-xs text-muted-foreground">{r.connected ? 'Connected' : 'Not connected'}</p>
+              </div>
+              {r.connected ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="cursor-pointer border-destructive/30 text-destructive hover:bg-destructive/5"
+                  onClick={() => setRows(p => p.map(x => x.id === r.id ? { ...x, connected: false } : x))}
+                >
+                  Unbind <X className="ml-1 h-3 w-3" />
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  size="sm"
+                  className="cursor-pointer gap-1"
+                  onClick={() => setRows(p => p.map(x => x.id === r.id ? { ...x, connected: true } : x))}
+                >
+                  Connect <ArrowRight className="h-3 w-3" />
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+      </SectionCard>
+    </div>
   )
 }
 
@@ -552,38 +841,50 @@ function IntegrationsTab() {
 // Page
 // ---------------------------------------------------------------------------
 const TAB_DESCRIPTIONS: Partial<Record<Tab, string>> = {
-  account: 'Your profile, connected accounts, and security.',
+  general: 'Your name, icon, and email.',
+  security: 'Connected accounts, password, and session.',
   notifications: 'Choose how Inline communicates with you.',
   appearance: 'Theme and text size for the dashboard.',
   integrations: 'Connect tools you already use.',
   'ai-voice': 'API keys, voice, and copilot options.',
   extension: 'Blocklist and extension preferences.',
+  danger: 'Permanently delete your account and local data.',
 }
 
-export default function PersonalSettingsPage() {
-  const [activeTab, setActiveTab] = useState<Tab>('account')
+function PersonalSettingsPageInner() {
+  const searchParams = useSearchParams()
+  const [activeTab, setActiveTab] = useState<Tab>('general')
+
+  useEffect(() => {
+    const t = searchParams.get('tab')
+    if (t && PROFILE_TABS.some(x => x.id === t)) setActiveTab(t as Tab)
+  }, [searchParams])
 
   const content: Record<Tab, React.ReactNode> = {
-    account:      <AccountTab />,
-    appearance:   <AppearanceTab />,
-    notifications:<NotificationsTab />,
-    'ai-voice':   <AIVoiceTab />,
-    extension:    <ExtensionTab />,
-    integrations: <IntegrationsTab />,
+    general:       <GeneralTab />,
+    security:      <SecurityTab />,
+    appearance:    <AppearanceTab />,
+    notifications: <NotificationsTab />,
+    'ai-voice':    <AIVoiceTab />,
+    extension:     <ExtensionTab />,
+    integrations:  <IntegrationsTab />,
+    danger:        <AccountDangerTab />,
   }
 
   return (
     <>
-      <PageHeader crumbs={[{ label: 'Settings' }]} />
+      <PageHeader
+        crumbs={[{ label: 'Account', href: '/app/dashboard' }, { label: 'Settings' }]}
+      />
 
       <div className="px-6 pb-12">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground mt-4">
-          Profile Settings
+          Account Settings
         </h1>
 
         <nav
           className="mt-6 flex gap-1 overflow-x-auto scrollbar-minimal border-b border-border -mb-px pb-px"
-          aria-label="Profile settings sections"
+          aria-label="Account settings sections"
         >
           {PROFILE_TABS.map(tab => {
             const active = activeTab === tab.id
@@ -594,9 +895,13 @@ export default function PersonalSettingsPage() {
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
                   'shrink-0 px-3 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors cursor-pointer whitespace-nowrap',
-                  active
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:text-foreground',
+                  tab.danger
+                    ? active
+                      ? 'border-destructive text-destructive'
+                      : 'border-transparent text-destructive/80 hover:text-destructive'
+                    : active
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground',
                 )}
               >
                 {tab.label}
@@ -605,7 +910,7 @@ export default function PersonalSettingsPage() {
           })}
         </nav>
 
-        <div className="mt-8 max-w-2xl space-y-2">
+        <div className="mt-8 w-full space-y-2">
           <h2 className="text-base font-semibold text-foreground">
             {PROFILE_TABS.find(t => t.id === activeTab)?.label}
           </h2>
@@ -614,27 +919,16 @@ export default function PersonalSettingsPage() {
           )}
         </div>
 
-        <div className="max-w-2xl mt-6 space-y-8">{content[activeTab]}</div>
-
-        <div className="max-w-2xl mt-12 pt-8 border-t border-border flex flex-wrap items-center gap-4">
-          <a
-            href="mailto:support@inline.app"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-          >
-            <HelpCircle className="w-4 h-4" />
-            Support
-          </a>
-          <form action={signOut}>
-            <button
-              type="submit"
-              className="inline-flex items-center gap-2 text-sm font-medium text-destructive hover:underline cursor-pointer"
-            >
-              <LogOut className="w-4 h-4" />
-              Log out
-            </button>
-          </form>
-        </div>
+        <div className="mt-6 w-full space-y-8">{content[activeTab]}</div>
       </div>
     </>
+  )
+}
+
+export default function PersonalSettingsPage() {
+  return (
+    <Suspense fallback={<div className="px-6 pb-12 pt-8 text-sm text-muted-foreground">Loading settings…</div>}>
+      <PersonalSettingsPageInner />
+    </Suspense>
   )
 }

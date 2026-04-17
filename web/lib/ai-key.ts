@@ -11,7 +11,7 @@ export async function getSupabaseAndUserFromRequest(request: Request) {
   if (authHeader?.startsWith('Bearer ')) {
     const token = authHeader.slice(7)
     const { data: { user } } = await supabase.auth.getUser(token)
-    return { supabase, user: user ?? null }
+    if (user) return { supabase, user }
   }
 
   const { data: { user } } = await supabase.auth.getUser()

@@ -3,7 +3,7 @@ import cors from 'cors';
 import { saveAnnotations, getAnnotations } from './apiBranch/AnnotationsAPI';
 
 const app: Application = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3030;
 
 app.use(cors({ origin: '*' }));
 app.use(express.json());

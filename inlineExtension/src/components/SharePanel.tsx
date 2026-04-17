@@ -51,6 +51,7 @@ export default function SharePanel({ onClose }: SharePanelProps) {
       .map(([k]) => k)
 
     try {
+      if (!chrome.runtime?.id) { setLoading(false); setError('Extension was reloaded — please refresh the page'); return }
       chrome.runtime.sendMessage(
         {
           type: 'SHARE_ANNOTATIONS',
@@ -99,7 +100,7 @@ export default function SharePanel({ onClose }: SharePanelProps) {
           <IShare />
           <span style={{ fontSize: 13, fontWeight: 500, color: C.accent, letterSpacing: '-0.02em' }}>Share</span>
         </div>
-        <button type="button" onClick={onClose} style={btnIcon}><IClose /></button>
+        <button type="button" onClick={onClose} title="Close" aria-label="Close" style={btnIcon}><IClose /></button>
       </div>
 
       {/* Layer checkboxes */}
@@ -129,6 +130,8 @@ export default function SharePanel({ onClose }: SharePanelProps) {
             type="button"
             onClick={handleShare}
             disabled={loading}
+            title="Create share link"
+            aria-label="Create share link"
             style={{
               width: '100%', padding: '10px 0', fontSize: 13, fontWeight: 500,
               borderRadius: C.radiusSm, border: 'none',

@@ -1,8 +1,13 @@
+import { normalizeInlineVoiceId } from './inlineVoicePresets'
+
 export type ExtensionSettings = {
   apiBaseUrl: string
   accessToken: string
   blockedDomains: string[]
   focusMode: boolean
+  elevenLabsKey: string
+  voiceId: string
+  screenReader: boolean
 }
 
 const DEFAULT_BASE = 'http://localhost:3000'
@@ -10,7 +15,10 @@ const DEFAULT_BASE = 'http://localhost:3000'
 export async function loadSettings(): Promise<ExtensionSettings> {
   return new Promise(resolve => {
     chrome.storage.local.get(
-      ['inlineApiBase', 'inlineAccessToken', 'inlineBlockedDomains', 'inlineFocusMode'],
+      [
+        'inlineApiBase', 'inlineAccessToken', 'inlineBlockedDomains', 'inlineFocusMode',
+        'inlineElevenLabsKey', 'inlineVoiceId', 'inlineScreenReader',
+      ],
       r => {
         let blockedDomains: string[] = []
         try {
@@ -23,6 +31,11 @@ export async function loadSettings(): Promise<ExtensionSettings> {
           accessToken: typeof r.inlineAccessToken === 'string' ? r.inlineAccessToken : '',
           blockedDomains: Array.isArray(blockedDomains) ? blockedDomains : [],
           focusMode: r.inlineFocusMode === 'true' || r.inlineFocusMode === true,
+          elevenLabsKey: typeof r.inlineElevenLabsKey === 'string' ? r.inlineElevenLabsKey : '',
+          voiceId: normalizeInlineVoiceId(
+            typeof r.inlineVoiceId === 'string' ? r.inlineVoiceId : undefined,
+          ),
+          screenReader: r.inlineScreenReader === 'true' || r.inlineScreenReader === true,
         })
       },
     )
@@ -35,5 +48,8 @@ export async function saveSettings(s: Partial<ExtensionSettings>): Promise<void>
   if (s.accessToken !== undefined) patch.inlineAccessToken = s.accessToken
   if (s.blockedDomains !== undefined) patch.inlineBlockedDomains = JSON.stringify(s.blockedDomains)
   if (s.focusMode !== undefined) patch.inlineFocusMode = String(s.focusMode)
+  if (s.elevenLabsKey !== undefined) patch.inlineElevenLabsKey = s.elevenLabsKey
+  if (s.voiceId !== undefined) patch.inlineVoiceId = normalizeInlineVoiceId(s.voiceId)
+  if (s.screenReader !== undefined) patch.inlineScreenReader = String(s.screenReader)
   await chrome.storage.local.set(patch)
 }

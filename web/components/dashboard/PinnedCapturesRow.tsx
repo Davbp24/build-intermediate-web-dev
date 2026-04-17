@@ -11,6 +11,7 @@ import {
   isPinnedNote,
 } from '@/lib/dashboard-favorites'
 import { collaboratorIndexForId } from '@/lib/dashboard-mock-avatars'
+import { prettyNotePreviewTruncated } from '@/lib/note-preview'
 
 const PASTEL_BGS = ['bg-[#F5EDE3]', 'bg-[#F1F1EF]', 'bg-[#FDECC8]', 'bg-[#E7E5E4]']
 
@@ -90,7 +91,7 @@ function NoteCaptureCard({
             {note.pageTitle || note.domain}
           </p>
           <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-            {note.content?.slice(0, 120) || note.domain}
+            {prettyNotePreviewTruncated(note, 120) || note.domain}
           </p>
         </div>
 
@@ -164,7 +165,7 @@ export default function PinnedCapturesRow({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
       {displayNotes.slice(0, 8).map((note, i) => (
         <NoteCaptureCard
           key={note.id}

@@ -78,7 +78,7 @@ export default async function WorkspaceDashboardPage({
       </div>
 
       {/* ── Main content — generous bottom padding so chat bar never overlaps ── */}
-      <div className="px-8 py-8 pb-32 max-w-7xl space-y-12">
+      <div className="w-full min-w-0 px-8 py-8 pb-32 space-y-12">
 
         {/* ── Greeting + actions ── */}
         <div className="flex items-center justify-between">

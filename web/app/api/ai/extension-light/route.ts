@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { generateText, streamText } from 'ai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { getAIApiKey, getSupabaseAndUserFromRequest } from '@/lib/ai-key'
+import { INLINE_SHORT_PERSONA } from '@/lib/inline-persona'
 
 export async function POST(request: Request) {
   const { user, supabase } = await getSupabaseAndUserFromRequest(request)
@@ -34,21 +35,35 @@ export async function POST(request: Request) {
     `Process this text:\n\n${text}`
 
   const google = createGoogleGenerativeAI({ apiKey })
-  const modelId = 'gemini-2.0-flash'
+  const modelId = 'gemini-2.5-flash'
   const truncatedPrompt = prompt.slice(0, 12000)
 
-  if (stream) {
-    const result = streamText({
+  try {
+    if (stream) {
+      const result = streamText({
+        model: google(modelId),
+        system: INLINE_SHORT_PERSONA,
+        prompt: truncatedPrompt,
+      })
+      return result.toTextStreamResponse()
+    }
+
+    const { text: result } = await generateText({
       model: google(modelId),
+      system: INLINE_SHORT_PERSONA,
       prompt: truncatedPrompt,
     })
-    return result.toTextStreamResponse()
+
+    return NextResponse.json({ result: result.trim() })
+  } catch (err: unknown) {
+    const status = (err as { statusCode?: number }).statusCode
+    if (status === 429) {
+      return NextResponse.json(
+        { error: 'AI quota exhausted — add credits at https://ai.studio/projects or use a new API key.' },
+        { status: 429 },
+      )
+    }
+    console.error('[extension-light] AI error:', err)
+    return NextResponse.json({ error: 'AI request failed.' }, { status: 500 })
   }
-
-  const { text: result } = await generateText({
-    model: google(modelId),
-    prompt: truncatedPrompt,
-  })
-
-  return NextResponse.json({ result: result.trim() })
 }

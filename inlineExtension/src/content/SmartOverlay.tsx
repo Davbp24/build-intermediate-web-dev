@@ -9,6 +9,8 @@ import {
 } from 'react'
 import { wrapSelectionWithHighlight } from './highlightWrap'
 import { loadSettings } from '../lib/extensionSettings'
+import { speakWithElevenLabs } from '../lib/elevenLabsTts'
+import { fetchViaBackground } from '../lib/backgroundFetch'
 
 type Pt = { x: number; y: number }
 type AnchorNote = { id: string; x: number; y: number; text: string }
@@ -36,12 +38,23 @@ async function serverTask(
 ): Promise<string | null> {
   const h: Record<string, string> = { 'Content-Type': 'application/json' }
   if (token) h.Authorization = `Bearer ${token}`
-  const res = await fetch(`${apiBase}/api/ai/extension-light`, {
-    method: 'POST', headers: h,
-    body: JSON.stringify({ task, text, instruction }),
-  })
-  if (!res.ok) return null
-  return ((await res.json()) as { result?: string }).result ?? null
+  try {
+    const res = await fetchViaBackground(`${apiBase}/api/ai/extension-light`, {
+      method: 'POST', headers: h,
+      body: JSON.stringify({ task, text, instruction }),
+    })
+    if (!res.ok) {
+      try {
+        const body = await res.json<{ error?: string }>()
+        if (body.error) return `[Error] ${body.error}`
+      } catch { /* non-JSON body */ }
+      return null
+    }
+    const body = await res.json<{ result?: string }>()
+    return body.result ?? null
+  } catch (err) {
+    return `[Error] ${err instanceof Error ? err.message : 'AI request failed'}`
+  }
 }
 
 /* ─── Theme ─── */
@@ -192,10 +205,55 @@ export default function SmartOverlay() {
   const [spatialAddr, setSpatialAddr] = useState('')
   const [spatialNote, setSpatialNote] = useState('')
   const [anchors, setAnchors] = useState<AnchorNote[]>([])
+  const [anchorsLoaded, setAnchorsLoaded] = useState(false)
   const [ctxMenu, setCtxMenu] = useState<Pt | null>(null)
+  const [aiResult, setAiResult] = useState<{ title: string; body: string; loading?: boolean } | null>(null)
   const dragRef = useRef<{ id: string; ox: number; oy: number } | null>(null)
   const selRef = useRef('')
   const subInputRef = useRef<HTMLInputElement>(null)
+  const anchorSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  /* ── Load persisted anchor notes on mount ── */
+  useEffect(() => {
+    if (!chrome.runtime?.id) { setAnchorsLoaded(true); return }
+    chrome.runtime.sendMessage(
+      { type: 'LOAD_ANNOTATIONS', payload: { pageUrl: window.location.href } },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          setAnchorsLoaded(true); return
+        }
+        const saved = response?.data?.elements?.anchorNotes as AnchorNote[] | undefined
+        if (Array.isArray(saved)) setAnchors(saved)
+        setAnchorsLoaded(true)
+      },
+    )
+  }, [])
+
+  /* ── Debounced persist for anchor notes ── */
+  useEffect(() => {
+    if (!anchorsLoaded) return
+    if (anchorSaveTimer.current) clearTimeout(anchorSaveTimer.current)
+    anchorSaveTimer.current = setTimeout(() => {
+      if (!chrome.runtime?.id) return
+      chrome.runtime.sendMessage(
+        {
+          type: 'SAVE_ANNOTATIONS',
+          payload: {
+            pageUrl: window.location.href,
+            featureKey: 'anchorNotes',
+            data: anchors,
+            pageTitle: document.title,
+            domain: window.location.hostname,
+            clearedAt: anchors.length === 0 ? Date.now() : null,
+          },
+        },
+        () => { if (chrome.runtime.lastError) { /* ignore */ } },
+      )
+    }, 500)
+    return () => {
+      if (anchorSaveTimer.current) clearTimeout(anchorSaveTimer.current)
+    }
+  }, [anchors, anchorsLoaded])
 
   const refreshSelection = useCallback(() => {
     const sel = window.getSelection()
@@ -256,13 +314,18 @@ export default function SmartOverlay() {
     const wrapped = wrapSelectionWithHighlight(task)
     if (!wrapped) return
     setToolbar(null); setSubPanel(null); setCtxMenu(null)
+    const label = task === 'summarize' ? 'Summary' : task === 'rewrite' ? 'Rephrased' : 'Shortened'
+    setAiResult({ title: label, body: '', loading: true })
     let out = await tryWindowAi(task, wrapped.text)
     if (!out) {
       const { apiBaseUrl, accessToken } = await loadSettings()
       out = await serverTask(apiBaseUrl, accessToken, task, wrapped.text, instruction)
     }
-    if (out) window.alert(out)
-    else window.alert('AI unavailable — set API URL + token in the popup.')
+    setAiResult({
+      title: label,
+      body: out ?? 'AI unavailable — set API URL + token in the popup.',
+      loading: false,
+    })
   }
 
   function runPageRisk() {
@@ -294,7 +357,7 @@ export default function SmartOverlay() {
     }])
   }
 
-  if (!toolbar && !riskOpen && !spatialOpen && !ctxMenu && anchors.length === 0) return null
+  if (!toolbar && !riskOpen && !spatialOpen && !ctxMenu && !aiResult && anchors.length === 0) return null
 
   const tbLeft = toolbar
     ? Math.max(8, Math.min(window.innerWidth - 500, toolbar.x - 230))
@@ -308,7 +371,7 @@ export default function SmartOverlay() {
     { label: 'Rephrase', icon: <IEdit />, action: () => { void runAiTask('rewrite'); setCtxMenu(null) } },
     { label: 'Shorten', icon: <IGrid />, action: () => { void runAiTask('shorten'); setCtxMenu(null) } },
     { label: 'Add Note', icon: <INote />, action: addAnchor },
-    { label: 'Read Aloud', icon: <IVolume />, action: () => { void window.speechSynthesis?.speak(new SpeechSynthesisUtterance(selRef.current.slice(0, 800))); setCtxMenu(null) } },
+    { label: 'Read Aloud', icon: <IVolume />, action: () => { void speakWithElevenLabs(selRef.current.slice(0, 800)); setCtxMenu(null) } },
     { label: 'Save to Map', icon: <IMapPin />, action: () => { setCtxMenu(null); setSpatialOpen(true) } },
     { label: 'Page Risk', icon: <IAlert />, action: () => { setCtxMenu(null); runPageRisk() } },
   ]
@@ -367,7 +430,7 @@ export default function SmartOverlay() {
             <TBtn active={subPanel === 'insight'} onClick={() => toggleSub('insight')} title="Tag insight">
               <ITag />
             </TBtn>
-            <TBtn onClick={() => { void window.speechSynthesis?.speak(new SpeechSynthesisUtterance(selRef.current.slice(0, 800))) }} title="Read aloud">
+            <TBtn onClick={() => { void speakWithElevenLabs(selRef.current.slice(0, 800)) }} title="Read aloud">
               <IVolume />
             </TBtn>
             <TBtn isText onClick={addAnchor} title="Pin a note here">Note</TBtn>
@@ -431,8 +494,9 @@ export default function SmartOverlay() {
                 onKeyDown={e => {
                   if (e.key === 'Enter' && subInput.trim()) {
                     wrapSelectionWithHighlight('extract')
+                    const saved = subInput
                     setSubPanel(null); setToolbar(null); setSubInput('')
-                    window.alert(`Insight saved: "${subInput}"`)
+                    setAiResult({ title: 'Insight saved', body: saved, loading: false })
                   }
                 }}
                 placeholder="Add insight…"
@@ -447,7 +511,7 @@ export default function SmartOverlay() {
               <button type="button" onClick={() => {
                 if (subInput.trim()) {
                   wrapSelectionWithHighlight('extract')
-                  window.alert(`Insight saved: "${subInput}"`)
+                  setAiResult({ title: 'Insight saved', body: subInput, loading: false })
                 }
                 setSubPanel(null); setToolbar(null); setSubInput('')
               }}
@@ -523,14 +587,25 @@ export default function SmartOverlay() {
                 style={{ border: '1.5px solid #d6d3d1', borderRadius: 8, padding: '7px 14px', background: '#fff', fontSize: 12, cursor: 'pointer', fontWeight: 600, color: DARK }}>Cancel</button>
               <button type="button" onClick={async () => {
                 const { apiBaseUrl, accessToken } = await loadSettings()
+                const workspaceId = await new Promise<string>(resolve => {
+                  chrome.storage.local.get(['inlineActiveWorkspaceId'], r => {
+                    resolve(typeof r.inlineActiveWorkspaceId === 'string' && r.inlineActiveWorkspaceId
+                      ? r.inlineActiveWorkspaceId : '')
+                  })
+                })
                 const h: Record<string, string> = { 'Content-Type': 'application/json' }
                 if (accessToken) h.Authorization = `Bearer ${accessToken}`
                 try {
-                  const res = await fetch(`${apiBaseUrl}/api/spatial/save`, { method: 'POST', headers: h, body: JSON.stringify({ address: spatialAddr, insight: spatialNote, workspaceId: 'ws-1', sourceUrl: window.location.href }) })
+                  const res = await fetch(`${apiBaseUrl}/api/spatial/save`, {
+                    method: 'POST', headers: h,
+                    body: JSON.stringify({ address: spatialAddr, insight: spatialNote, workspaceId, sourceUrl: window.location.href }),
+                  })
                   const j = await res.json()
-                  if (!res.ok) window.alert((j as { error?: string }).error ?? 'Save failed')
-                  else window.alert('Saved to map.')
-                } catch (e) { window.alert(e instanceof Error ? e.message : 'Failed') }
+                  if (!res.ok) setAiResult({ title: 'Save to map', body: (j as { error?: string }).error ?? 'Save failed', loading: false })
+                  else setAiResult({ title: 'Saved to map', body: spatialAddr || 'Pin saved.', loading: false })
+                } catch (e) {
+                  setAiResult({ title: 'Save failed', body: e instanceof Error ? e.message : 'Failed', loading: false })
+                }
                 setSpatialOpen(false); setSpatialAddr(''); setSpatialNote('')
               }}
                 style={{ border: 'none', borderRadius: 8, padding: '7px 14px', background: DARK, color: '#fff', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Save</button>
@@ -550,6 +625,38 @@ export default function SmartOverlay() {
           {riskLoading
             ? <p style={{ color: '#78716c', margin: 0 }}>Analysing…</p>
             : <pre style={{ whiteSpace: 'pre-wrap', margin: 0, color: DARK, lineHeight: 1.5 }}>{riskText}</pre>}
+        </div>
+      )}
+
+      {/* ── Inline AI result card (replaces window.alert) ── */}
+      {aiResult && (
+        <div
+          className="inline-toolbar"
+          style={{
+            position: 'fixed', right: 16, top: 16,
+            width: 'min(100vw - 32px, 360px)', maxHeight: '70vh', overflow: 'auto',
+            zIndex: 2147483646,
+            background: CREAM, border: '1.5px solid #d6d3d1', borderRadius: 14,
+            padding: '14px 16px', pointerEvents: 'auto',
+            fontFamily: FONT, fontSize: 12,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <strong style={{ fontSize: 13, color: DARK }}>{aiResult.title}</strong>
+            <button type="button" onClick={() => setAiResult(null)}
+              style={{ border: '1.5px solid #d6d3d1', borderRadius: 6, background: '#fff', cursor: 'pointer', padding: '2px 7px', fontSize: 13, color: DARK }}>×</button>
+          </div>
+          {aiResult.loading
+            ? <p style={{ color: '#78716c', margin: 0 }}>Thinking…</p>
+            : <pre style={{ whiteSpace: 'pre-wrap', margin: 0, color: DARK, lineHeight: 1.5, fontFamily: FONT }}>{aiResult.body}</pre>}
+          {!aiResult.loading && aiResult.body && (
+            <div style={{ display: 'flex', gap: 6, marginTop: 10, justifyContent: 'flex-end' }}>
+              <button type="button"
+                onClick={() => { void navigator.clipboard.writeText(aiResult.body).catch(() => {}) }}
+                style={{ border: '1.5px solid #d6d3d1', borderRadius: 8, padding: '5px 10px', background: '#fff', fontSize: 11, cursor: 'pointer', fontWeight: 600, color: DARK }}>Copy</button>
+            </div>
+          )}
         </div>
       )}
 
